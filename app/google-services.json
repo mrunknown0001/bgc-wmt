@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "1009735184999",
+    "project_id": "wmts-e6a64",
+    "storage_bucket": "wmts-e6a64.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1009735184999:android:fc97401d63cb843585dac2",
+        "android_client_info": {
+          "package_name": "com.wmt.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBhBZmNrwWyYtmvUOOOpuYSMooMeQdvGnQ"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

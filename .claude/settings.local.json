@@ -1,0 +1,43 @@
+{
+  "permissions": {
+    "allow": [
+      "PowerShell(Get-ChildItem -Force C:\\\\Users\\\\Adam\\\\AndroidStudioProjects\\\\wmt | Select-Object Name, Mode; Write-Output \"---\"; \\(Get-Command gradle -ErrorAction SilentlyContinue\\).Source; Write-Output \"JAVA: $env:JAVA_HOME\")",
+      "PowerShell(Remove-Item *)",
+      "PowerShell($j = Get-Command java -ErrorAction SilentlyContinue; if \\($j\\) { java -version } else { Write-Output \"no java on PATH\" }; Write-Output \"JAVA_HOME=$env:JAVA_HOME\"; Write-Output \"ANDROID_HOME=$env:ANDROID_HOME\"; $sb = \"C:\\\\Users\\\\Adam\\\\AppData\\\\Local\\\\Android\\\\Sdk\"; Write-Output \"sdk exists: $\\(Test-Path $sb\\)\"; $studio = Get-ChildItem 'C:\\\\Program Files\\\\Android' -ErrorAction SilentlyContinue | Select-Object -ExpandProperty Name)",
+      "PowerShell(Test-Path *)",
+      "PowerShell(Tee-Object *)",
+      "PowerShell($f = \"C:\\\\Users\\\\Adam\\\\AndroidStudioProjects\\\\wmt\\\\build_log.txt\"; if \\(Test-Path $f\\) { Write-Output \"size: $\\(\\(Get-Item $f\\).Length\\) bytes\"; Get-Content $f -Tail 15 } else { Write-Output \"no log yet\" })",
+      "PowerShell(Select-String *)",
+      "PowerShell($dir = \"C:\\\\Users\\\\Adam\\\\AppData\\\\Local\\\\Temp\\\\wmt-backend\"; if \\(Test-Path $dir\\) { Remove-Item -Recurse -Force $dir }; git clone --depth 1 https://github.com/mrunknown0001/wmt.git $dir 2>&1 | Select-Object -Last 5; Write-Output \"---ROUTES---\"; if \\(Test-Path \"$dir\\\\routes\\\\api.php\"\\) { Get-Content \"$dir\\\\routes\\\\api.php\" } else { Write-Output \"no routes/api.php\"; Get-ChildItem \"$dir\\\\routes\" -ErrorAction SilentlyContinue | Select-Object Name })",
+      "PowerShell(try { $m = Invoke-WebRequest -UseBasicParsing \"https://repo1.maven.org/maven2/com/google/dagger/hilt-android-gradle-plugin/maven-metadata.xml\"; \\([xml]$m.Content\\).metadata.versioning.latest; Write-Output \"--- recent ---\"; \\([xml]$m.Content\\).metadata.versioning.versions.version | Select-Object -Last 12 } catch { Write-Output \"err: $_\" })",
+      "PowerShell(Get-Content *)",
+      "PowerShell($f = \"C:\\\\Users\\\\Adam\\\\AndroidStudioProjects\\\\wmt\\\\build_log.txt\"; $lines = Get-Content $f; $idx = \\($lines | Select-String -Pattern \"unexpected jvm signature V\" | Select-Object -First 1\\).LineNumber; if \\($idx\\) { $lines[\\($idx-1\\)..\\([Math]::Min\\($idx+40, $lines.Count-1\\)\\)] })",
+      "Bash(iconv -f UTF-16LE -t UTF-8 build_log.txt)",
+      "Bash(iconv -f UTF-16LE -t UTF-8 ksp_info.txt)",
+      "PowerShell(& \"C:\\\\Users\\\\Adam\\\\AppData\\\\Local\\\\Android\\\\Sdk\\\\platform-tools\\\\adb.exe\" devices -l)",
+      "PowerShell($env:JAVA_HOME = \"C:\\\\Program Files\\\\Android\\\\Android Studio\\\\jbr\"; .\\\\gradlew.bat :app:assembleDebug --console=plain)",
+      "PowerShell($env:JAVA_HOME = \"C:\\\\Program Files\\\\Android\\\\Android Studio\\\\jbr\"; .\\\\gradlew.bat :app:assembleDebug --console=plain 2>&1 | Select-String -Pattern \"error:|e: |BUILD|warning: unresolved|Unresolved\")",
+      "PowerShell($env:JAVA_HOME = \"C:\\\\Program Files\\\\Android\\\\Android Studio\\\\jbr\"; .\\\\gradlew.bat :app:assembleDebug --console=plain 2>&1 | Select-String -Pattern \"^e: |error:|BUILD|Unresolved\")",
+      "Bash(sed -n '/function store/,/^    }/p' app/Http/Controllers/TaskCommentController.php)",
+      "Bash(sed -n '/function rules/,/^    }/p' app/Http/Requests/StoreTaskCommentRequest.php)",
+      "Bash(sed -n '/Schema::create/,/}\\);/p' database/migrations/2026_06_26_400001_create_comment_attachments_table.php)",
+      "PowerShell($env:JAVA_HOME = \"C:\\\\Program Files\\\\Android\\\\Android Studio\\\\jbr\"; .\\\\gradlew.bat :app:assembleDebug --console=plain 2>&1 | Select-String -Pattern \"^e: |error:|BUILD|Unresolved|Could not|FAILED\")",
+      "PowerShell($env:JAVA_HOME = \"C:\\\\Program Files\\\\Android\\\\Android Studio\\\\jbr\"; .\\\\gradlew.bat :app:compileDebugKotlin --console=plain -q 2>&1 | Select-Object -Last 40)",
+      "PowerShell($env:JAVA_HOME = \"C:\\\\Program Files\\\\Android\\\\Android Studio\\\\jbr\"; .\\\\gradlew.bat :app:compileDebugKotlin --console=plain 2>&1 | Select-Object -Last 8)",
+      "Bash(curl -sSL \"https://api.github.com/repos/google/fonts/contents/ofl/inter\")",
+      "Bash(rm -f Inter-*.ttf)",
+      "Bash(curl -sSL -o inter.ttf \"https://raw.githubusercontent.com/google/fonts/main/ofl/inter/Inter%5Bopsz,wght%5D.ttf\")",
+      "Bash(curl -sSL -o ../../../../../LICENSES-Inter-OFL.txt \"https://raw.githubusercontent.com/google/fonts/main/ofl/inter/OFL.txt\")",
+      "Bash(xxd)",
+      "Bash(curl -sSL -o \"C:/Users/Adam/AndroidStudioProjects/wmt/LICENSE-Inter-OFL.txt\" \"https://raw.githubusercontent.com/google/fonts/main/ofl/inter/OFL.txt\")",
+      "PowerShell($env:JAVA_HOME = \"C:\\\\Program Files\\\\Android\\\\Android Studio\\\\jbr\"; .\\\\gradlew.bat :app:assembleDebug --console=plain 2>&1 | Select-Object -Last 60)",
+      "PowerShell($env:JAVA_HOME = \"C:\\\\Program Files\\\\Android\\\\Android Studio\\\\jbr\"; & \"C:\\\\Users\\\\Adam\\\\AndroidStudioProjects\\\\wmt\\\\gradlew.bat\" -p \"C:\\\\Users\\\\Adam\\\\AndroidStudioProjects\\\\wmt\" :app:compileDebugKotlin --console=plain 2>&1 | Select-Object -Last 20)",
+      "Bash(curl -s -m 6 -o /dev/null -w \"HTTP %{http_code}\\\\n\" -H \"Accept: application/json\" http://192.168.254.106/api/user)",
+      "Bash(curl -s -m 6 -o /dev/null -w \"HTTP %{http_code}\\\\n\" http://192.168.254.106/)",
+      "PowerShell($env:JAVA_HOME = \"C:\\\\Program Files\\\\Android\\\\Android Studio\\\\jbr\"; & \"C:\\\\Users\\\\Adam\\\\AndroidStudioProjects\\\\wmt\\\\gradlew.bat\" -p \"C:\\\\Users\\\\Adam\\\\AndroidStudioProjects\\\\wmt\" :app:assembleDebug --console=plain 2>&1 | Select-Object -Last 12)",
+      "PowerShell($env:JAVA_HOME = \"C:\\\\Program Files\\\\Android\\\\Android Studio\\\\jbr\"; & \"C:\\\\Users\\\\Adam\\\\AndroidStudioProjects\\\\wmt\\\\gradlew.bat\" -p \"C:\\\\Users\\\\Adam\\\\AndroidStudioProjects\\\\wmt\" :app:assembleDebug --console=plain 2>&1 | Select-Object -Last 10)",
+      "PowerShell($env:JAVA_HOME = \"C:\\\\Program Files\\\\Android\\\\Android Studio\\\\jbr\"; & \"C:\\\\Users\\\\Adam\\\\AndroidStudioProjects\\\\wmt\\\\gradlew.bat\" -p \"C:\\\\Users\\\\Adam\\\\AndroidStudioProjects\\\\wmt\" :app:assembleDebug --console=plain 2>&1 | Select-Object -Last 30)",
+      "PowerShell($env:JAVA_HOME = \"C:\\\\Program Files\\\\Android\\\\Android Studio\\\\jbr\"; & \"C:\\\\Users\\\\Adam\\\\AndroidStudioProjects\\\\wmt\\\\gradlew.bat\" -p \"C:\\\\Users\\\\Adam\\\\AndroidStudioProjects\\\\wmt\" :app:assembleDebug --console=plain 2>&1 | Select-Object -Last 8)"
+    ]
+  }
+}

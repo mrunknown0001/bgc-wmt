@@ -1,0 +1,5 @@
+<resources>
+    <string name="app_name">WMT</string>
+    <string name="default_notification_channel_id">wmt_notifications</string>
+    <string name="default_notification_channel_name">WMT Notifications</string>
+</resources>
