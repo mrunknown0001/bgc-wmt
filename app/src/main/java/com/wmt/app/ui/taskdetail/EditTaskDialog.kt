@@ -23,8 +23,10 @@ import com.wmt.app.domain.model.Task
 import com.wmt.app.domain.model.TaskPriority
 import com.wmt.app.domain.model.TaskStatus
 import com.wmt.app.domain.model.UserSummary
+import com.wmt.app.ui.components.CollaboratorPicker
 import com.wmt.app.ui.components.DatePickerField
 import com.wmt.app.ui.components.DropdownField
+import com.wmt.app.ui.components.RecurrenceFields
 
 @Composable
 fun EditTaskDialog(
@@ -41,6 +43,9 @@ fun EditTaskDialog(
         assignedTo: Int?,
         dueDate: String?,
         startDate: String?,
+        recurrenceFrequency: String?,
+        recurrenceInterval: Int?,
+        collaboratorIds: List<Int>,
     ) -> Unit,
 ) {
     var title by remember { mutableStateOf(task.title) }
@@ -50,6 +55,18 @@ fun EditTaskDialog(
     var assignee by remember { mutableStateOf(task.assignee) }
     var dueDate by remember { mutableStateOf(task.dueDate?.take(10)) }
     var startDate by remember { mutableStateOf(task.startDate?.take(10)) }
+    var recurrenceFrequency by remember {
+        mutableStateOf(if (task.isRecurring) task.recurrenceFrequency else null)
+    }
+    var recurrenceInterval by remember {
+        mutableStateOf((task.recurrenceInterval ?: 1).toString())
+    }
+    var collaboratorIds by remember {
+        mutableStateOf(task.collaborators.map { it.id }.toSet())
+    }
+
+    // Collaborators may include users outside the member list — keep them selectable.
+    val collaboratorOptions = (members + task.collaborators).distinctBy { it.id }
 
     // Always include the current assignee even if they aren't in the member list.
     val assigneeOptions = (listOf<UserSummary?>(null) + members + listOfNotNull(task.assignee))
@@ -102,6 +119,20 @@ fun EditTaskDialog(
                 }
                 DatePickerField(label = "Due date", value = dueDate, onChange = { dueDate = it })
                 DatePickerField(label = "Start date", value = startDate, onChange = { startDate = it })
+                RecurrenceFields(
+                    frequency = recurrenceFrequency,
+                    interval = recurrenceInterval,
+                    onFrequencyChange = { recurrenceFrequency = it },
+                    onIntervalChange = { recurrenceInterval = it },
+                )
+                CollaboratorPicker(
+                    members = collaboratorOptions,
+                    selectedIds = collaboratorIds,
+                    onToggle = { id ->
+                        collaboratorIds =
+                            if (id in collaboratorIds) collaboratorIds - id else collaboratorIds + id
+                    },
+                )
                 if (error != null) {
                     Text(error, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
                 }
@@ -118,6 +149,9 @@ fun EditTaskDialog(
                         assignee?.id,
                         dueDate,
                         startDate,
+                        recurrenceFrequency,
+                        recurrenceInterval.toIntOrNull()?.coerceIn(1, 365),
+                        collaboratorIds.toList(),
                     )
                 },
                 enabled = !saving && title.isNotBlank(),

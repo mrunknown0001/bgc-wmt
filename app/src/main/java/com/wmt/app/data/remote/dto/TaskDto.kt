@@ -6,7 +6,9 @@ import com.squareup.moshi.JsonClass
 @JsonClass(generateAdapter = true)
 data class TaskDto(
     @Json(name = "id") val id: Int = 0,
-    @Json(name = "project_id") val projectId: Int = 0,
+    // Nullable defensively: some server responses have emitted an explicit
+    // `"project_id": null`, and a non-null Int makes Moshi reject the whole payload.
+    @Json(name = "project_id") val projectId: Int? = null,
     @Json(name = "section_id") val sectionId: Int? = null,
     @Json(name = "title") val title: String = "",
     @Json(name = "description") val description: String? = null,
@@ -18,6 +20,11 @@ data class TaskDto(
     @Json(name = "project") val project: ProjectSummaryDto? = null,
     @Json(name = "subtasks_count") val subtasksCount: Int = 0,
     @Json(name = "completed_subtasks_count") val completedSubtasksCount: Int = 0,
+    @Json(name = "is_recurring") val isRecurring: Boolean = false,
+    @Json(name = "recurrence_frequency") val recurrenceFrequency: String? = null,
+    @Json(name = "recurrence_interval") val recurrenceInterval: Int? = null,
+    @Json(name = "collaborators") val collaborators: List<UserSummaryDto> = emptyList(),
+    @Json(name = "creator") val creator: UserSummaryDto? = null,
 )
 
 @JsonClass(generateAdapter = true)
@@ -81,6 +88,11 @@ data class CreateTaskRequest(
     @Json(name = "assigned_to") val assignedTo: Int? = null,
     @Json(name = "section_id") val sectionId: Int? = null,
     @Json(name = "due_date") val dueDate: String? = null,
+    @Json(name = "start_date") val startDate: String? = null,
+    @Json(name = "is_recurring") val isRecurring: Boolean = false,
+    @Json(name = "recurrence_frequency") val recurrenceFrequency: String? = null,
+    @Json(name = "recurrence_interval") val recurrenceInterval: Int? = null,
+    @Json(name = "collaborator_ids") val collaboratorIds: List<Int>? = null,
 )
 
 /** Body for PUT /api/projects/{projectId}/tasks/{taskId} (title/status/priority required). */
@@ -93,6 +105,10 @@ data class UpdateTaskRequest(
     @Json(name = "assigned_to") val assignedTo: Int? = null,
     @Json(name = "due_date") val dueDate: String? = null,
     @Json(name = "start_date") val startDate: String? = null,
+    @Json(name = "is_recurring") val isRecurring: Boolean = false,
+    @Json(name = "recurrence_frequency") val recurrenceFrequency: String? = null,
+    @Json(name = "recurrence_interval") val recurrenceInterval: Int? = null,
+    @Json(name = "collaborator_ids") val collaboratorIds: List<Int>? = null,
 )
 
 /** GET /api/my-tasks — { taskGroups: { overdue, dueToday, ... }, stats }. */

@@ -46,6 +46,7 @@ class PreferencesManager @Inject constructor(
         val USER_JSON = stringPreferencesKey("user_json")
         val NOTIF_PREFS = stringPreferencesKey("notif_prefs")
         val THEME_MODE = stringPreferencesKey("theme_mode")
+        val MAX_UPLOAD_MB = intPreferencesKey("max_upload_mb")
     }
 
     private val securePrefs = EncryptedSharedPreferences.create(
@@ -88,6 +89,13 @@ class PreferencesManager @Inject constructor(
     }
 
     val unreadCount: Flow<Int> = prefs.map { it[Keys.UNREAD_COUNT] ?: 0 }
+
+    /** Server's general attachment cap in MB (default matches the backend seed). */
+    val maxUploadSizeMb: Flow<Int> = prefs.map { it[Keys.MAX_UPLOAD_MB] ?: 10 }
+
+    suspend fun saveMaxUploadSizeMb(mb: Int) {
+        context.dataStore.edit { it[Keys.MAX_UPLOAD_MB] = mb.coerceAtLeast(1) }
+    }
 
     val currentUser: Flow<User?> = prefs.map { p ->
         p[Keys.USER_JSON]?.let { runCatching { userAdapter.fromJson(it)?.toDomain() }.getOrNull() }

@@ -12,16 +12,16 @@ import androidx.compose.ui.platform.LocalView
 import androidx.core.view.WindowCompat
 
 // A fixed brand palette (Material You / dynamic color intentionally disabled) so
-// the app presents the same warm, clean identity on every device.
+// the app presents the same vibrant, clean identity on every device.
 private val LightColors = lightColorScheme(
-    primary = Coral,
+    primary = Violet,
     onPrimary = Color.White,
-    primaryContainer = CoralContainer,
-    onPrimaryContainer = OnCoralContainer,
-    secondary = Indigo,
+    primaryContainer = VioletContainer,
+    onPrimaryContainer = OnVioletContainer,
+    secondary = Magenta,
     onSecondary = Color.White,
-    secondaryContainer = IndigoContainer,
-    onSecondaryContainer = OnIndigoContainer,
+    secondaryContainer = MagentaContainer,
+    onSecondaryContainer = OnMagentaContainer,
     tertiary = Color(0xFF00838F),
     onTertiary = Color.White,
     tertiaryContainer = Color(0xFFCFF0F4),
@@ -32,7 +32,7 @@ private val LightColors = lightColorScheme(
     onSurface = Ink,
     surfaceVariant = SurfaceSoft,
     onSurfaceVariant = InkMuted,
-    surfaceTint = Coral,
+    surfaceTint = Violet,
     surfaceContainerLowest = Color.White,
     surfaceContainerLow = SurfaceSofter,
     surfaceContainer = SurfaceSoft,
@@ -48,14 +48,14 @@ private val LightColors = lightColorScheme(
 )
 
 private val DarkColors = darkColorScheme(
-    primary = CoralLight,
-    onPrimary = Color(0xFF4E1712),
-    primaryContainer = CoralContainerDark,
-    onPrimaryContainer = CoralContainer,
-    secondary = IndigoLight,
-    onSecondary = Color(0xFF16163A),
-    secondaryContainer = Color(0xFF34345C),
-    onSecondaryContainer = IndigoContainer,
+    primary = VioletLight,
+    onPrimary = Color(0xFF221A5E),
+    primaryContainer = VioletContainerDark,
+    onPrimaryContainer = VioletContainer,
+    secondary = MagentaLight,
+    onSecondary = Color(0xFF4A0F2B),
+    secondaryContainer = Color(0xFF5C2340),
+    onSecondaryContainer = MagentaContainer,
     tertiary = Color(0xFF80D8E0),
     onTertiary = Color(0xFF00363B),
     tertiaryContainer = Color(0xFF00565E),
@@ -66,7 +66,7 @@ private val DarkColors = darkColorScheme(
     onSurface = OnSurfaceDark,
     surfaceVariant = SurfaceSoftDark,
     onSurfaceVariant = OnSurfaceMutedDark,
-    surfaceTint = CoralLight,
+    surfaceTint = VioletLight,
     surfaceContainerLowest = Color(0xFF141517),
     surfaceContainerLow = Color(0xFF202124),
     surfaceContainer = SurfaceSoftDark,

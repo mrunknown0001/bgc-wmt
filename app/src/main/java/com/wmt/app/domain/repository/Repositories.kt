@@ -1,9 +1,12 @@
 package com.wmt.app.domain.repository
 
+import com.wmt.app.domain.model.Comment
 import com.wmt.app.domain.model.DashboardData
 import com.wmt.app.domain.model.Notification
+import com.wmt.app.domain.model.PersonalTodo
 import com.wmt.app.domain.model.Project
 import com.wmt.app.domain.model.ProjectDetail
+import com.wmt.app.domain.model.SearchResults
 import com.wmt.app.domain.model.Task
 import com.wmt.app.domain.model.TaskDetail
 import com.wmt.app.domain.model.User
@@ -19,6 +22,10 @@ interface SettingsRepository {
     /** "system" | "light" | "dark". */
     val themeMode: Flow<String>
     suspend fun setThemeMode(mode: String)
+    /** Server-configured general upload cap in MB (videos have a fixed 50MB cap). */
+    val maxUploadSizeMb: Flow<Int>
+    /** Fetches /api/settings and caches the upload limit locally. */
+    suspend fun refreshAppSettings()
 }
 
 interface AuthRepository {
@@ -67,6 +74,10 @@ interface TaskRepository {
         assignedTo: Int?,
         sectionId: Int?,
         dueDate: String?,
+        isRecurring: Boolean = false,
+        recurrenceFrequency: String? = null,
+        recurrenceInterval: Int? = null,
+        collaboratorIds: List<Int>? = null,
     ): Resource<Task>
     suspend fun updateTask(
         projectId: Int,
@@ -78,13 +89,27 @@ interface TaskRepository {
         assignedTo: Int?,
         dueDate: String?,
         startDate: String?,
+        isRecurring: Boolean = false,
+        recurrenceFrequency: String? = null,
+        recurrenceInterval: Int? = null,
+        collaboratorIds: List<Int>? = null,
     ): Resource<Task>
     suspend fun deleteTask(projectId: Int, taskId: Int): Resource<Unit>
+    /** Month must be "YYYY-MM"; returns assigned + collaborating tasks due that month. */
+    suspend fun calendarTasks(month: String): Resource<List<Task>>
+    /** Comments older than [beforeId], newest first, plus whether more remain. */
+    suspend fun olderComments(
+        projectId: Int,
+        taskId: Int,
+        beforeId: Int,
+    ): Resource<Pair<List<Comment>, Boolean>>
 }
 
 interface ProjectRepository {
     fun projects(): Flow<Resource<List<Project>>>
     suspend fun searchProjects(query: String): Resource<List<Project>>
+    /** Global search across projects and tasks (GET /api/mobile/search). */
+    suspend fun globalSearch(query: String): Resource<SearchResults>
     suspend fun projectDetail(projectId: Int): Resource<ProjectDetail>
     suspend fun createProject(
         name: String,
@@ -103,7 +128,11 @@ interface ProjectRepository {
 }
 
 interface NotificationRepository {
-    fun notifications(): Flow<Resource<List<Notification>>>
+    /** [filter]: null/"inbox" (default), "unread", "mentioned", "bookmarked", "archived". */
+    fun notifications(filter: String? = null): Flow<Resource<List<Notification>>>
+    suspend fun toggleBookmark(id: String): Resource<Unit>
+    suspend fun archive(id: String): Resource<Unit>
+    suspend fun unarchive(id: String): Resource<Unit>
     val unreadCount: Flow<Int>
     suspend fun refreshUnreadCount(): Resource<Int>
     fun incrementUnreadLocally()
@@ -112,4 +141,14 @@ interface NotificationRepository {
     val preferences: Flow<Map<String, Boolean>>
     suspend fun refreshPreferences(): Resource<Unit>
     suspend fun setPreference(type: String, enabled: Boolean): Resource<Unit>
+}
+
+/** Lightweight personal checklist (separate from project/standalone tasks). */
+interface TodoRepository {
+    suspend fun todos(): Resource<List<PersonalTodo>>
+    suspend fun addTodo(title: String): Resource<PersonalTodo>
+    suspend fun setCompleted(id: Int, completed: Boolean): Resource<PersonalTodo>
+    suspend fun renameTodo(id: Int, title: String): Resource<PersonalTodo>
+    suspend fun deleteTodo(id: Int): Resource<Unit>
+    suspend fun clearCompleted(): Resource<Unit>
 }

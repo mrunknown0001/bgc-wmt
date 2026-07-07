@@ -8,6 +8,7 @@ object Constants {
     const val UNREAD_POLL_INTERVAL_MS = 60_000L
     const val DEFAULT_CONNECT_TIMEOUT = 20L
     const val DEFAULT_READ_TIMEOUT = 30L
+    const val DEFAULT_WRITE_TIMEOUT = 120L
     const val DB_NAME = "wmt.db"
 
     // Realtime (Soketi / Pusher protocol). Host is derived from the configured server URL.

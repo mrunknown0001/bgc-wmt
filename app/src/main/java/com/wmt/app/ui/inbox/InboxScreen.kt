@@ -2,6 +2,7 @@ package com.wmt.app.ui.inbox
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -14,6 +15,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Comment
@@ -23,8 +25,14 @@ import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.NotificationsNone
+import androidx.compose.material.icons.rounded.Archive
+import androidx.compose.material.icons.rounded.Bookmark
+import androidx.compose.material.icons.rounded.BookmarkBorder
+import androidx.compose.material.icons.rounded.Unarchive
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SwipeToDismissBox
@@ -90,6 +98,21 @@ fun InboxScreen(
     ) { padding ->
         Column(modifier = Modifier.padding(padding)) {
             OfflineBanner(visible = state.offline)
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .horizontalScroll(rememberScrollState())
+                    .padding(horizontal = 16.dp, vertical = 4.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                InboxFilter.entries.forEach { filter ->
+                    FilterChip(
+                        selected = state.filter == filter,
+                        onClick = { viewModel.setFilter(filter) },
+                        label = { Text(filter.label) },
+                    )
+                }
+            }
             PullToRefreshBox(
                 isRefreshing = state.refreshing,
                 onRefresh = viewModel::refresh,
@@ -103,7 +126,13 @@ fun InboxScreen(
                     )
                     state.notifications.isEmpty() -> EmptyState(
                         title = "No notifications",
-                        message = "You have no notifications yet.",
+                        message = when (state.filter) {
+                            InboxFilter.ALL -> "You have no notifications yet."
+                            InboxFilter.UNREAD -> "You're all caught up."
+                            InboxFilter.MENTIONED -> "No mentions yet."
+                            InboxFilter.BOOKMARKED -> "Bookmark notifications to pin them here."
+                            InboxFilter.ARCHIVED -> "Archived notifications will appear here."
+                        },
                         icon = Icons.Default.NotificationsNone,
                     )
                     else -> LazyColumn(
@@ -152,6 +181,8 @@ fun InboxScreen(
                                     onClick = {
                                         viewModel.onNotificationClick(notification, onNotificationClick)
                                     },
+                                    onToggleBookmark = { viewModel.toggleBookmark(notification) },
+                                    onToggleArchive = { viewModel.toggleArchive(notification) },
                                 )
                             }
                             ThinDivider(startIndent = 68.dp)
@@ -167,6 +198,8 @@ fun InboxScreen(
 private fun NotificationRow(
     notification: Notification,
     onClick: () -> Unit,
+    onToggleBookmark: () -> Unit,
+    onToggleArchive: () -> Unit,
 ) {
     val background = if (notification.isUnread) {
         MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.35f)
@@ -217,14 +250,42 @@ private fun NotificationRow(
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
-        if (notification.isUnread) {
-            Spacer(
-                modifier = Modifier
-                    .padding(top = 4.dp)
-                    .size(8.dp)
-                    .clip(CircleShape)
-                    .background(MaterialTheme.colorScheme.primary),
-            )
+        Column(horizontalAlignment = Alignment.End) {
+            Row {
+                IconButton(onClick = onToggleBookmark, modifier = Modifier.size(32.dp)) {
+                    Icon(
+                        imageVector = if (notification.isBookmarked) {
+                            Icons.Rounded.Bookmark
+                        } else {
+                            Icons.Rounded.BookmarkBorder
+                        },
+                        contentDescription = if (notification.isBookmarked) "Remove bookmark" else "Bookmark",
+                        modifier = Modifier.size(18.dp),
+                        tint = if (notification.isBookmarked) {
+                            MaterialTheme.colorScheme.primary
+                        } else {
+                            MaterialTheme.colorScheme.onSurfaceVariant
+                        },
+                    )
+                }
+                IconButton(onClick = onToggleArchive, modifier = Modifier.size(32.dp)) {
+                    Icon(
+                        imageVector = if (notification.isArchived) Icons.Rounded.Unarchive else Icons.Rounded.Archive,
+                        contentDescription = if (notification.isArchived) "Unarchive" else "Archive",
+                        modifier = Modifier.size(18.dp),
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            }
+            if (notification.isUnread) {
+                Spacer(
+                    modifier = Modifier
+                        .padding(top = 4.dp, end = 12.dp)
+                        .size(8.dp)
+                        .clip(CircleShape)
+                        .background(MaterialTheme.colorScheme.primary),
+                )
+            }
         }
     }
 }

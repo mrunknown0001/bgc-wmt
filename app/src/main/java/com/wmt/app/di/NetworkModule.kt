@@ -44,6 +44,8 @@ object NetworkModule {
             .addInterceptor(logging)
             .connectTimeout(Constants.DEFAULT_CONNECT_TIMEOUT, TimeUnit.SECONDS)
             .readTimeout(Constants.DEFAULT_READ_TIMEOUT, TimeUnit.SECONDS)
+            // Generous write window so large comment attachments (videos up to 50MB) survive slow Wi-Fi.
+            .writeTimeout(Constants.DEFAULT_WRITE_TIMEOUT, TimeUnit.SECONDS)
             .build()
     }
 

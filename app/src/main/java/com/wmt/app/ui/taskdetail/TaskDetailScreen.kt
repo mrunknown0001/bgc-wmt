@@ -1,12 +1,17 @@
 package com.wmt.app.ui.taskdetail
 
+import android.Manifest
+import android.content.Context
 import android.net.Uri
+import android.provider.OpenableColumns
+import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -26,7 +31,10 @@ import androidx.compose.material.icons.filled.AttachFile
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.PhotoCamera
+import androidx.compose.material.icons.rounded.Repeat
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -47,9 +55,11 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.text.TextRange
@@ -66,6 +76,7 @@ import com.wmt.app.domain.model.TaskDetail
 import com.wmt.app.domain.model.TaskStatus
 import com.wmt.app.domain.model.UserSummary
 import com.wmt.app.ui.components.AttachmentView
+import com.wmt.app.ui.components.ConfettiEffect
 import com.wmt.app.ui.components.CompletionCircle
 import com.wmt.app.ui.components.ErrorView
 import com.wmt.app.ui.components.HtmlText
@@ -74,8 +85,10 @@ import com.wmt.app.ui.components.SkeletonList
 import com.wmt.app.ui.components.TaskStatusChip
 import com.wmt.app.ui.components.UserAvatar
 import com.wmt.app.ui.components.WmtTopAppBar
+import com.wmt.app.util.CameraCapture
 import com.wmt.app.util.DateUtils
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -88,6 +101,17 @@ fun TaskDetailScreen(
     val scrollBehavior = TopAppBarDefaults.enterAlwaysScrollBehavior()
     var showEdit by remember { mutableStateOf(false) }
     var showDeleteConfirm by remember { mutableStateOf(false) }
+
+    // Comment/status failures happen while content is on screen — surface them as a
+    // toast instead of silently swallowing the server's message.
+    val toastContext = LocalContext.current
+    LaunchedEffect(state.error) {
+        val message = state.error
+        if (message != null && state.detail != null) {
+            Toast.makeText(toastContext, message, Toast.LENGTH_LONG).show()
+            viewModel.clearError()
+        }
+    }
 
     if (showDeleteConfirm) {
         AlertDialog(
@@ -125,7 +149,8 @@ fun TaskDetailScreen(
                 showEdit = false
                 viewModel.clearEditError()
             },
-            onSave = { title, status, priority, description, assignedTo, dueDate, startDate ->
+            onSave = { title, status, priority, description, assignedTo, dueDate, startDate,
+                       recurrenceFrequency, recurrenceInterval, collaboratorIds ->
                 viewModel.editTask(
                     title = title,
                     status = status,
@@ -134,6 +159,9 @@ fun TaskDetailScreen(
                     assignedTo = assignedTo,
                     dueDate = dueDate,
                     startDate = startDate,
+                    recurrenceFrequency = recurrenceFrequency,
+                    recurrenceInterval = recurrenceInterval,
+                    collaboratorIds = collaboratorIds,
                 ) { showEdit = false }
             },
         )
@@ -167,6 +195,7 @@ fun TaskDetailScreen(
         },
     ) { innerPadding ->
         val detail = state.detail
+        Box(Modifier.fillMaxSize()) {
         when {
             state.loading && detail == null -> {
                 SkeletonList(modifier = Modifier.padding(innerPadding))
@@ -181,15 +210,22 @@ fun TaskDetailScreen(
             detail != null -> {
                 TaskDetailContent(
                     detail = detail,
+                    comments = state.allComments,
+                    hasMoreComments = state.hasMoreComments,
+                    loadingMoreComments = state.loadingMoreComments,
+                    maxUploadMb = state.maxUploadMb,
                     updatingStatus = state.updatingStatus,
                     postingComment = state.postingComment,
                     contentPadding = innerPadding,
                     onStatusSelected = viewModel::updateStatus,
                     onAddComment = viewModel::addComment,
+                    onLoadMoreComments = viewModel::loadOlderComments,
                     onToggleSubtask = viewModel::toggleSubtask,
                     onOpenSubtask = onOpenTask,
                 )
             }
+        }
+        ConfettiEffect(burstKey = state.celebrations, modifier = Modifier.fillMaxSize())
         }
     }
 }
@@ -197,23 +233,71 @@ fun TaskDetailScreen(
 @Composable
 private fun TaskDetailContent(
     detail: TaskDetail,
+    comments: List<Comment>,
+    hasMoreComments: Boolean,
+    loadingMoreComments: Boolean,
+    maxUploadMb: Int,
     updatingStatus: Boolean,
     postingComment: Boolean,
     contentPadding: PaddingValues,
     onStatusSelected: (TaskStatus) -> Unit,
-    onAddComment: (String, List<String>) -> Unit,
+    onAddComment: (body: String, attachments: List<String>, onSuccess: () -> Unit) -> Unit,
+    onLoadMoreComments: () -> Unit,
     onToggleSubtask: (subtaskId: Int, done: Boolean) -> Unit,
     onOpenSubtask: (projectId: Int, taskId: Int) -> Unit,
 ) {
     val task = detail.task
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
     var commentValue by remember { mutableStateOf(TextFieldValue("")) }
     var mentions by remember { mutableStateOf<List<UserSummary>>(emptyList()) }
     var selectedFiles by remember { mutableStateOf<List<Uri>>(emptyList()) }
+    var timelineFilter by remember { mutableStateOf(TimelineFilter.ALL) }
     val filePicker = rememberLauncherForActivityResult(
         ActivityResultContracts.OpenMultipleDocuments(),
     ) { uris ->
-        if (uris.isNotEmpty()) selectedFiles = (selectedFiles + uris).distinct().take(5)
+        if (uris.isNotEmpty()) {
+            val (accepted, tooBig) = uris.partition { fitsUploadLimit(context, it, maxUploadMb) }
+            if (tooBig.isNotEmpty()) {
+                Toast.makeText(
+                    context,
+                    "Too large — videos are limited to 50MB, other files to ${maxUploadMb}MB",
+                    Toast.LENGTH_LONG,
+                ).show()
+            }
+            selectedFiles = (selectedFiles + accepted).distinct().take(5)
+        }
     }
+
+    // Camera capture: take photo → fetch a location fix → burn timestamp/geotag overlay + EXIF.
+    var pendingPhoto by remember { mutableStateOf<CameraCapture.PendingPhoto?>(null) }
+    var processingPhoto by remember { mutableStateOf(false) }
+    val cameraLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.TakePicture(),
+    ) { saved ->
+        val photo = pendingPhoto
+        pendingPhoto = null
+        if (saved && photo != null) {
+            processingPhoto = true
+            scope.launch {
+                runCatching {
+                    CameraCapture.stampPhoto(photo.file, CameraCapture.currentLocation(context))
+                }.onFailure {
+                    Toast.makeText(context, "Couldn't process photo", Toast.LENGTH_SHORT).show()
+                }
+                selectedFiles = (selectedFiles + photo.uri).distinct().take(5)
+                processingPhoto = false
+            }
+        }
+    }
+    val launchCamera = {
+        val photo = CameraCapture.newPendingPhoto(context)
+        pendingPhoto = photo
+        cameraLauncher.launch(photo.uri)
+    }
+    val locationPermissionLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestMultiplePermissions(),
+    ) { launchCamera() } // proceed either way — the photo just won't be geotagged if denied
 
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
@@ -302,6 +386,56 @@ private fun TaskDetailContent(
                 }
                 MetaRow(label = "Due date", value = DateUtils.formatDate(task.dueDate) ?: "—")
                 MetaRow(label = "Start date", value = DateUtils.formatDate(task.startDate) ?: "—")
+                task.recurrenceLabel?.let { label ->
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        Text(
+                            text = "Repeats",
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.width(96.dp),
+                        )
+                        Icon(
+                            Icons.Rounded.Repeat,
+                            contentDescription = null,
+                            modifier = Modifier.size(16.dp),
+                            tint = MaterialTheme.colorScheme.primary,
+                        )
+                        Text(
+                            text = label.removePrefix("Repeats "),
+                            style = MaterialTheme.typography.bodyMedium,
+                        )
+                    }
+                }
+                if (task.collaborators.isNotEmpty()) {
+                    Row(
+                        verticalAlignment = Alignment.Top,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        Text(
+                            text = "Collaborators",
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.width(96.dp),
+                        )
+                        Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                            task.collaborators.forEach { user ->
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                ) {
+                                    UserAvatar(user = user, size = 22.dp)
+                                    Text(
+                                        text = user.name,
+                                        style = MaterialTheme.typography.bodyMedium,
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
             }
         }
 
@@ -339,11 +473,22 @@ private fun TaskDetailContent(
         }
 
         item(key = "comments-header") {
-            Text(
-                text = "Comments",
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.SemiBold,
-            )
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                Text(
+                    text = "Comments & Activity",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold,
+                )
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    TimelineFilter.entries.forEach { filter ->
+                        FilterChip(
+                            selected = timelineFilter == filter,
+                            onClick = { timelineFilter = filter },
+                            label = { Text(filter.label) },
+                        )
+                    }
+                }
+            }
         }
 
         item(key = "comment-input") {
@@ -408,8 +553,11 @@ private fun TaskDetailContent(
                             tint = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                         Spacer(Modifier.width(6.dp))
+                        val label = remember(uri) {
+                            attachmentDisplayName(context, uri) ?: "Attachment ${index + 1}"
+                        }
                         Text(
-                            text = "Attachment ${index + 1}",
+                            text = label,
                             style = MaterialTheme.typography.bodySmall,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis,
@@ -426,10 +574,34 @@ private fun TaskDetailContent(
                     horizontalArrangement = Arrangement.spacedBy(4.dp),
                 ) {
                     IconButton(
-                        onClick = { filePicker.launch(arrayOf("image/*", "application/pdf")) },
+                        onClick = { filePicker.launch(ATTACHMENT_MIME_TYPES) },
                         enabled = !postingComment && selectedFiles.size < 5,
                     ) {
                         Icon(Icons.Default.AttachFile, contentDescription = "Attach file")
+                    }
+                    IconButton(
+                        onClick = {
+                            if (CameraCapture.hasLocationPermission(context)) {
+                                launchCamera()
+                            } else {
+                                locationPermissionLauncher.launch(
+                                    arrayOf(
+                                        Manifest.permission.ACCESS_FINE_LOCATION,
+                                        Manifest.permission.ACCESS_COARSE_LOCATION,
+                                    ),
+                                )
+                            }
+                        },
+                        enabled = !postingComment && !processingPhoto && selectedFiles.size < 5,
+                    ) {
+                        if (processingPhoto) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(20.dp),
+                                strokeWidth = 2.dp,
+                            )
+                        } else {
+                            Icon(Icons.Default.PhotoCamera, contentDescription = "Take photo")
+                        }
                     }
                     OutlinedTextField(
                         value = commentValue,
@@ -447,10 +619,13 @@ private fun TaskDetailContent(
                                     "data-label=\"${user.name}\">@${user.name}</span>"
                                 body = body.replace("@${user.name}", span)
                             }
-                            onAddComment(body, selectedFiles.map { it.toString() })
-                            commentValue = TextFieldValue("")
-                            mentions = emptyList()
-                            selectedFiles = emptyList()
+                            // Clear the draft only once the server accepts it, so a
+                            // rejected upload doesn't eat the comment and attachments.
+                            onAddComment(body, selectedFiles.map { it.toString() }) {
+                                commentValue = TextFieldValue("")
+                                mentions = emptyList()
+                                selectedFiles = emptyList()
+                            }
                         },
                         enabled = !postingComment && (commentValue.text.isNotBlank() || selectedFiles.isNotEmpty()),
                     ) {
@@ -470,33 +645,60 @@ private fun TaskDetailContent(
             }
         }
 
-        if (detail.comments.isEmpty()) {
-            item(key = "comments-empty") {
-                Text(
-                    text = "No comments yet",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
-        } else {
-            items(detail.comments, key = { "comment-${it.id}" }) { comment ->
-                CommentRow(comment = comment)
+        if (timelineFilter != TimelineFilter.ACTIVITY) {
+            if (comments.isEmpty()) {
+                item(key = "comments-empty") {
+                    Text(
+                        text = "No comments yet",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            } else {
+                items(comments, key = { "comment-${it.id}" }) { comment ->
+                    CommentRow(comment = comment)
+                }
+                if (hasMoreComments) {
+                    item(key = "comments-load-more") {
+                        TextButton(
+                            onClick = onLoadMoreComments,
+                            enabled = !loadingMoreComments,
+                        ) {
+                            if (loadingMoreComments) {
+                                CircularProgressIndicator(
+                                    modifier = Modifier.size(16.dp),
+                                    strokeWidth = 2.dp,
+                                )
+                                Spacer(Modifier.width(8.dp))
+                            }
+                            Text("Show older comments")
+                        }
+                    }
+                }
             }
         }
 
-        if (detail.activities.isNotEmpty()) {
-            item(key = "activity-header") {
-                Text(
-                    text = "Activity",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.SemiBold,
-                )
+        if (timelineFilter != TimelineFilter.COMMENTS && detail.activities.isNotEmpty()) {
+            if (timelineFilter == TimelineFilter.ALL) {
+                item(key = "activity-header") {
+                    Text(
+                        text = "Activity",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.SemiBold,
+                    )
+                }
             }
             items(detail.activities, key = { "activity-${it.id}" }) { activity ->
                 ActivityRow(activity = activity)
             }
         }
     }
+}
+
+private enum class TimelineFilter(val label: String) {
+    ALL("All"),
+    COMMENTS("Comments"),
+    ACTIVITY("Activity"),
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -670,3 +872,36 @@ private fun ActivityRow(activity: Activity) {
         )
     }
 }
+
+/** Types the comment attachment picker offers (mirrors the backend's allowlist). */
+private val ATTACHMENT_MIME_TYPES = arrayOf(
+    "image/*",
+    "application/pdf",
+    "video/*",
+    "text/csv",
+    "text/comma-separated-values",
+    "application/vnd.ms-excel",
+    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+)
+
+private const val MAX_VIDEO_BYTES = 50L * 1024 * 1024
+
+/** Client-side size check: videos ≤ 50MB, other files ≤ the server's max_upload_size setting. */
+private fun fitsUploadLimit(context: Context, uri: Uri, maxUploadMb: Int): Boolean {
+    val size = context.contentResolver.query(uri, arrayOf(OpenableColumns.SIZE), null, null, null)
+        ?.use { cursor -> if (cursor.moveToFirst() && !cursor.isNull(0)) cursor.getLong(0) else null }
+        ?: return true // size unknown — let the server decide
+    val mime = context.contentResolver.getType(uri) ?: "application/octet-stream"
+    return if (mime.startsWith("video/")) {
+        size <= MAX_VIDEO_BYTES
+    } else {
+        // Oversized images get transcoded/downscaled at upload; only hard-reject other types.
+        mime.startsWith("image/") || size <= maxUploadMb.toLong() * 1024 * 1024
+    }
+}
+
+private fun attachmentDisplayName(context: Context, uri: Uri): String? =
+    runCatching {
+        context.contentResolver.query(uri, arrayOf(OpenableColumns.DISPLAY_NAME), null, null, null)
+            ?.use { cursor -> if (cursor.moveToFirst()) cursor.getString(0) else null }
+    }.getOrNull()

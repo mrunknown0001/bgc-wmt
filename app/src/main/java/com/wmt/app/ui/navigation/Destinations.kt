@@ -30,6 +30,8 @@ object MainRoutes {
 
     const val PROJECT_DETAIL = "project/{projectId}"
     const val TASK_DETAIL = "task/{projectId}/{taskId}"
+    const val SEARCH = "search"
+    const val TODOS = "todos"
 
     fun projectDetail(projectId: Int) = "project/$projectId"
     fun taskDetail(projectId: Int, taskId: Int) = "task/$projectId/$taskId"

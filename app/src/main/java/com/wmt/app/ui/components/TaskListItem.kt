@@ -18,8 +18,10 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.CalendarToday
 import androidx.compose.material.icons.rounded.Check
+import androidx.compose.material.icons.rounded.Checklist
 import androidx.compose.material.icons.rounded.Flag
 import androidx.compose.material.icons.rounded.KeyboardArrowDown
+import androidx.compose.material.icons.rounded.Repeat
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -44,18 +46,19 @@ import com.wmt.app.domain.model.TaskStatus
 import com.wmt.app.ui.theme.badgeColors
 import com.wmt.app.util.DateUtils
 
-// Deterministic soft colors for project accent dots.
+// Deterministic vibrant colors for project accent dots (matches the brand palette family).
 private val projectDotColors = listOf(
-    Color(0xFFF2685F), Color(0xFF5A5AD6), Color(0xFF00838F), Color(0xFF2E7D32),
-    Color(0xFFEF6C00), Color(0xFF6A1B9A), Color(0xFFC2185B), Color(0xFF00695C),
+    Color(0xFF5F4BD8), Color(0xFFD6437E), Color(0xFF00A3B4), Color(0xFF23A45C),
+    Color(0xFFF97316), Color(0xFF8A4DDB), Color(0xFF3E6FF4), Color(0xFFE53935),
 )
 
 fun projectDotColor(projectId: Int): Color =
     projectDotColors[projectId.mod(projectDotColors.size)]
 
 /**
- * A tappable circular completion toggle: an outlined ring when open, a filled
- * primary disc with a check when done. Pass [onToggle] to make it interactive.
+ * A tappable circular completion toggle: an outlined ring when open (optionally
+ * tinted by task status, ClickUp-style), a filled primary disc with a check when
+ * done. Pass [onToggle] to make it interactive.
  */
 @Composable
 fun CompletionCircle(
@@ -63,9 +66,10 @@ fun CompletionCircle(
     modifier: Modifier = Modifier,
     size: Dp = 22.dp,
     enabled: Boolean = true,
+    ringColor: Color? = null,
     onToggle: (() -> Unit)? = null,
 ) {
-    val ring = MaterialTheme.colorScheme.outline
+    val ring = ringColor ?: MaterialTheme.colorScheme.outline
     val clickModifier = if (onToggle != null && enabled) {
         Modifier.clickable(
             interactionSource = remember { MutableInteractionSource() },
@@ -126,7 +130,8 @@ fun TaskListItem(
     val due = DateUtils.formatDate(task.dueDate)
     val priority = task.priorityEnum
     val showPriority = priority == TaskPriority.HIGH || priority == TaskPriority.URGENT
-    val hasMeta = (showProject && task.project != null) || due != null
+    val hasMeta = (showProject && task.project != null) || due != null ||
+        task.isRecurring || task.subtasksCount > 0
 
     Row(
         modifier = modifier
@@ -135,7 +140,11 @@ fun TaskListItem(
             .padding(horizontal = 16.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        CompletionCircle(done = done, onToggle = onToggleComplete)
+        CompletionCircle(
+            done = done,
+            ringColor = if (done) null else task.statusEnum.badgeColors().content,
+            onToggle = onToggleComplete,
+        )
         Spacer(Modifier.width(14.dp))
         Column(
             modifier = Modifier.weight(1f),
@@ -187,6 +196,27 @@ fun TaskListItem(
                             style = MaterialTheme.typography.bodySmall,
                             color = if (overdue) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant,
                             fontWeight = if (overdue) FontWeight.SemiBold else FontWeight.Normal,
+                        )
+                    }
+                    if (task.isRecurring) {
+                        Icon(
+                            Icons.Rounded.Repeat,
+                            contentDescription = "Recurring",
+                            modifier = Modifier.size(13.dp),
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                    if (task.subtasksCount > 0) {
+                        Icon(
+                            Icons.Rounded.Checklist,
+                            contentDescription = null,
+                            modifier = Modifier.size(13.dp),
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                        Text(
+                            text = "${task.completedSubtasksCount}/${task.subtasksCount}",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                     }
                 }

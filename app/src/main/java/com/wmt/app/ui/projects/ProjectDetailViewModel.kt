@@ -26,6 +26,8 @@ data class ProjectDetailUiState(
     val savingEdit: Boolean = false,
     val editError: String? = null,
     val deleting: Boolean = false,
+    /** Increments each time the user completes a task — drives the confetti burst. */
+    val celebrations: Int = 0,
 )
 
 @HiltViewModel
@@ -43,6 +45,22 @@ class ProjectDetailViewModel @Inject constructor(
     init {
         load()
     }
+
+    /**
+     * Silently refetches when the screen re-enters composition (back-nav from task
+     * detail) so completed/edited tasks don't linger stale. The first call (initial
+     * composition, right after init's load) is skipped; load() shows no spinner once
+     * detail is present.
+     */
+    fun onScreenVisible() {
+        if (firstVisible) {
+            firstVisible = false
+            return
+        }
+        load()
+    }
+
+    private var firstVisible = true
 
     fun load() {
         _state.update { it.copy(loading = it.detail == null, error = null) }
@@ -76,6 +94,7 @@ class ProjectDetailViewModel @Inject constructor(
                     tasks = detail.tasks.flip(),
                     sections = detail.sections.map { it.copy(tasks = it.tasks.flip()) },
                 ),
+                celebrations = st.celebrations + if (newStatus == TaskStatus.DONE) 1 else 0,
             )
         }
         viewModelScope.launch {
@@ -132,6 +151,9 @@ class ProjectDetailViewModel @Inject constructor(
         assignedTo: Int?,
         sectionId: Int?,
         dueDate: String?,
+        recurrenceFrequency: String? = null,
+        recurrenceInterval: Int? = null,
+        collaboratorIds: List<Int> = emptyList(),
         onSuccess: () -> Unit,
     ) {
         _state.update { it.copy(creatingTask = true, createTaskError = null) }
@@ -146,6 +168,10 @@ class ProjectDetailViewModel @Inject constructor(
                     assignedTo = assignedTo,
                     sectionId = sectionId,
                     dueDate = dueDate,
+                    isRecurring = recurrenceFrequency != null,
+                    recurrenceFrequency = recurrenceFrequency,
+                    recurrenceInterval = if (recurrenceFrequency != null) recurrenceInterval ?: 1 else null,
+                    collaboratorIds = collaboratorIds.ifEmpty { null },
                 )
             ) {
                 is Resource.Success -> {

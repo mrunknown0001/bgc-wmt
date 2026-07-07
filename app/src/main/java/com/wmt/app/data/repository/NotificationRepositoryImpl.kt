@@ -34,20 +34,40 @@ class NotificationRepositoryImpl @Inject constructor(
     override val unreadCount: Flow<Int> = prefs.unreadCount
     override val preferences: Flow<Map<String, Boolean>> = prefs.notificationPreferences
 
-    override fun notifications(): Flow<Resource<List<Notification>>> = flow {
-        val cached = dao.observeAll().first().map { it.toDomain() }
-        emit(Resource.Loading(cached))
+    override fun notifications(filter: String?): Flow<Resource<List<Notification>>> = flow {
+        // Only the default inbox list is cached offline; filtered views go straight to the API.
+        val useCache = filter == null || filter == "inbox"
+        val cached = if (useCache) dao.observeAll().first().map { it.toDomain() } else emptyList()
+        emit(Resource.Loading(if (useCache) cached else null))
 
-        when (val result = safeApiCall(moshi) { api.notifications() }) {
+        when (val result = safeApiCall(moshi) { api.notifications(filter) }) {
             is Resource.Success -> {
                 val items = result.data.data.map { it.toDomain() }
-                dao.replaceAll(items.map { it.toEntity() })
+                if (useCache) dao.replaceAll(items.map { it.toEntity() })
                 emit(Resource.Success(items))
             }
-            is Resource.Error -> emit(Resource.Error(result.error, cached))
+            is Resource.Error -> emit(Resource.Error(result.error, if (useCache) cached else null))
             is Resource.Loading -> Unit
         }
     }
+
+    override suspend fun toggleBookmark(id: String): Resource<Unit> =
+        safeApiCall(moshi) {
+            api.toggleNotificationBookmark(id)
+            Unit
+        }
+
+    override suspend fun archive(id: String): Resource<Unit> =
+        safeApiCall(moshi) {
+            api.archiveNotification(id)
+            Unit
+        }
+
+    override suspend fun unarchive(id: String): Resource<Unit> =
+        safeApiCall(moshi) {
+            api.unarchiveNotification(id)
+            Unit
+        }
 
     override suspend fun refreshUnreadCount(): Resource<Int> {
         val result = safeApiCall(moshi) { api.unreadCount().count }

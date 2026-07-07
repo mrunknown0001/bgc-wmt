@@ -49,7 +49,9 @@ import com.wmt.app.ui.mytasks.MyTasksScreen
 import com.wmt.app.ui.profile.ProfileScreen
 import com.wmt.app.ui.projects.ProjectDetailScreen
 import com.wmt.app.ui.projects.ProjectsScreen
+import com.wmt.app.ui.search.SearchScreen
 import com.wmt.app.ui.taskdetail.TaskDetailScreen
+import com.wmt.app.ui.todos.TodosScreen
 import kotlinx.coroutines.flow.Flow
 
 /** Top-level switch between setup, login and the main app based on [RootViewModel] state. */
@@ -226,8 +228,20 @@ private fun MainNavHost(
                 onOpenProjects = { openTab(MainRoutes.PROJECTS) },
                 onOpenInbox = { openTab(MainRoutes.INBOX) },
                 onOpenProfile = { openTab(MainRoutes.PROFILE) },
+                onOpenSearch = { navController.navigate(MainRoutes.SEARCH) },
+                onOpenTodos = { navController.navigate(MainRoutes.TODOS) },
                 unreadCount = unreadCount,
             )
+        }
+        composable(MainRoutes.SEARCH) {
+            SearchScreen(
+                onBack = { navController.popBackStack() },
+                onProjectClick = { navController.navigate(MainRoutes.projectDetail(it)) },
+                onTaskClick = { p, t -> navController.navigate(MainRoutes.taskDetail(p, t)) },
+            )
+        }
+        composable(MainRoutes.TODOS) {
+            TodosScreen(onBack = { navController.popBackStack() })
         }
         composable(MainRoutes.MY_TASKS) {
             MyTasksScreen(

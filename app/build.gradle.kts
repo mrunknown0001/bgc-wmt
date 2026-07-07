@@ -99,6 +99,10 @@ dependencies {
     // Image loading
     implementation(libs.coil.compose)
 
+    // Camera capture post-processing (EXIF geotag/timestamp) + location for geotagging
+    implementation(libs.androidx.exifinterface)
+    implementation(libs.play.services.location)
+
     // Realtime (Pusher protocol / Soketi)
     implementation(libs.pusher.java.client)
 

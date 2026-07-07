@@ -17,12 +17,22 @@ import kotlinx.coroutines.launch
 import java.time.Instant
 import javax.inject.Inject
 
+/** Server-side inbox filters (query param values for GET /api/notifications). */
+enum class InboxFilter(val param: String?, val label: String) {
+    ALL(null, "All"),
+    UNREAD("unread", "Unread"),
+    MENTIONED("mentioned", "Mentions"),
+    BOOKMARKED("bookmarked", "Bookmarked"),
+    ARCHIVED("archived", "Archived"),
+}
+
 data class InboxUiState(
     val loading: Boolean = true,
     val notifications: List<Notification> = emptyList(),
     val error: String? = null,
     val refreshing: Boolean = false,
     val offline: Boolean = false,
+    val filter: InboxFilter = InboxFilter.ALL,
 )
 
 @HiltViewModel
@@ -50,6 +60,52 @@ class InboxViewModel @Inject constructor(
         viewModelScope.launch { repository.refreshUnreadCount() }
     }
 
+    fun setFilter(filter: InboxFilter) {
+        if (_state.value.filter == filter) return
+        _state.update { it.copy(filter = filter, notifications = emptyList()) }
+        load(isRefresh = false)
+    }
+
+    /** Bookmark/unbookmark optimistically; drop from the list when the filter no longer matches. */
+    fun toggleBookmark(n: Notification) {
+        val bookmarked = !n.isBookmarked
+        val now = Instant.now().toString()
+        _state.update { st ->
+            st.copy(
+                notifications = st.notifications.mapNotNull {
+                    when {
+                        it.id != n.id -> it
+                        st.filter == InboxFilter.BOOKMARKED && !bookmarked -> null
+                        else -> it.copy(bookmarkedAt = if (bookmarked) now else null)
+                    }
+                },
+            )
+        }
+        viewModelScope.launch { repository.toggleBookmark(n.id) }
+    }
+
+    /** Archive/unarchive optimistically; archived items leave every non-archive filter. */
+    fun toggleArchive(n: Notification) {
+        val archiving = !n.isArchived
+        val now = Instant.now().toString()
+        _state.update { st ->
+            st.copy(
+                notifications = st.notifications.mapNotNull {
+                    when {
+                        it.id != n.id -> it
+                        st.filter == InboxFilter.ARCHIVED && !archiving -> null
+                        st.filter != InboxFilter.ARCHIVED && archiving -> null
+                        else -> it.copy(archivedAt = if (archiving) now else null)
+                    }
+                },
+            )
+        }
+        viewModelScope.launch {
+            if (archiving) repository.archive(n.id) else repository.unarchive(n.id)
+            repository.refreshUnreadCount()
+        }
+    }
+
     /** Silent background refresh for near-real-time updates (no spinner). */
     fun poll() {
         load(isRefresh = false)
@@ -64,7 +120,7 @@ class InboxViewModel @Inject constructor(
             _state.update { it.copy(loading = it.notifications.isEmpty()) }
         }
         loadJob = viewModelScope.launch {
-            repository.notifications().collect { resource ->
+            repository.notifications(_state.value.filter.param).collect { resource ->
                 when (resource) {
                     is Resource.Loading -> _state.update {
                         it.copy(

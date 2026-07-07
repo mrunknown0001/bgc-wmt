@@ -22,6 +22,8 @@ data class NotificationDto(
     @Json(name = "id") val id: String = "",
     @Json(name = "data") val data: NotificationDataDto = NotificationDataDto(),
     @Json(name = "read_at") val readAt: String? = null,
+    @Json(name = "bookmarked_at") val bookmarkedAt: String? = null,
+    @Json(name = "archived_at") val archivedAt: String? = null,
     @Json(name = "created_at") val createdAt: String = "",
 )
 

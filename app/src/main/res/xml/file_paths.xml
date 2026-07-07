@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<paths>
+    <!-- Photos captured from the in-app camera button before upload. -->
+    <cache-path
+        name="camera"
+        path="camera/" />
+</paths>

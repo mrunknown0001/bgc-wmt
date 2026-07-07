@@ -33,6 +33,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -46,6 +47,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.wmt.app.domain.model.Project
+import com.wmt.app.ui.components.ConfettiEffect
 import com.wmt.app.ui.components.ErrorView
 import com.wmt.app.ui.components.HtmlText
 import com.wmt.app.ui.components.ProjectStatusBadge
@@ -65,6 +67,9 @@ fun ProjectDetailScreen(
     viewModel: ProjectDetailViewModel = hiltViewModel(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
+    // Re-fetch silently whenever this screen comes back into view (e.g. after
+    // completing a task on the detail screen) so the task list stays current.
+    LaunchedEffect(Unit) { viewModel.onScreenVisible() }
     val title = state.detail?.project?.name ?: "Project"
     val scrollBehavior = TopAppBarDefaults.enterAlwaysScrollBehavior()
     var showAddTask by remember { mutableStateOf(false) }
@@ -114,7 +119,8 @@ fun ProjectDetailScreen(
                 showAddTask = false
                 viewModel.clearCreateTaskError()
             },
-            onCreate = { taskTitle, status, priority, description, assignedTo, sectionId, dueDate ->
+            onCreate = { taskTitle, status, priority, description, assignedTo, sectionId, dueDate,
+                         recurrenceFrequency, recurrenceInterval, collaboratorIds ->
                 viewModel.createTask(
                     title = taskTitle,
                     status = status,
@@ -123,6 +129,9 @@ fun ProjectDetailScreen(
                     assignedTo = assignedTo,
                     sectionId = sectionId,
                     dueDate = dueDate,
+                    recurrenceFrequency = recurrenceFrequency,
+                    recurrenceInterval = recurrenceInterval,
+                    collaboratorIds = collaboratorIds,
                 ) { showAddTask = false }
             },
         )
@@ -163,6 +172,7 @@ fun ProjectDetailScreen(
         },
     ) { padding ->
         val detail = state.detail
+        Box(Modifier.fillMaxSize()) {
         when {
             state.loading && detail == null -> SkeletonList(Modifier.padding(padding))
             state.error != null && detail == null -> ErrorView(
@@ -207,6 +217,8 @@ fun ProjectDetailScreen(
                     }
                 }
             }
+        }
+        ConfettiEffect(burstKey = state.celebrations, modifier = Modifier.fillMaxSize())
         }
     }
 }

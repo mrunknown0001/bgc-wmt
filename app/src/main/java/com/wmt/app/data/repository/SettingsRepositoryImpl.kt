@@ -38,4 +38,11 @@ class SettingsRepositoryImpl @Inject constructor(
     override suspend fun saveServerUrl(baseUrl: String) = prefs.saveServerUrl(baseUrl)
 
     override suspend fun clearServerUrl() = prefs.clearServerUrl()
+
+    override val maxUploadSizeMb: Flow<Int> = prefs.maxUploadSizeMb
+
+    override suspend fun refreshAppSettings() {
+        runCatching { api.appSettings() }
+            .onSuccess { prefs.saveMaxUploadSizeMb(it.maxUploadSize) }
+    }
 }

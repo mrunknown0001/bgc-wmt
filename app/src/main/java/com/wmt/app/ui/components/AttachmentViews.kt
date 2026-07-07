@@ -8,7 +8,9 @@ import android.graphics.pdf.PdfRenderer
 import android.net.Uri
 import android.os.Environment
 import android.os.ParcelFileDescriptor
+import android.widget.MediaController
 import android.widget.Toast
+import android.widget.VideoView
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -33,6 +35,8 @@ import androidx.compose.material.icons.filled.AttachFile
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.PictureAsPdf
+import androidx.compose.material.icons.filled.PlayCircle
+import androidx.compose.material.icons.filled.TableChart
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -53,6 +57,7 @@ import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.viewinterop.AndroidView
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
@@ -64,12 +69,13 @@ import kotlinx.coroutines.withContext
 import java.io.File
 import java.net.URL
 
-/** A single comment attachment: image thumbnail (tap → zoomable preview) or file row (tap → PDF preview), plus a download button. */
+/** A single comment attachment: image thumbnail (tap → zoomable preview), video tile (tap → in-app player), or file row (tap → PDF preview / download), plus a download button. */
 @Composable
 fun AttachmentView(attachment: Attachment) {
     val context = LocalContext.current
     var showImage by remember { mutableStateOf(false) }
     var showPdf by remember { mutableStateOf(false) }
+    var showVideo by remember { mutableStateOf(false) }
     val isPdf = attachment.fileType == "application/pdf" ||
         attachment.fileName.endsWith(".pdf", ignoreCase = true)
 
@@ -91,9 +97,45 @@ fun AttachmentView(attachment: Attachment) {
                     .clickable { showImage = true },
             )
             Spacer(Modifier.weight(1f))
+        } else if (attachment.isVideo) {
+            Box(
+                contentAlignment = Alignment.Center,
+                modifier = Modifier
+                    .size(96.dp)
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(Color.Black.copy(alpha = 0.85f))
+                    .clickable { showVideo = true },
+            ) {
+                Icon(
+                    imageVector = Icons.Default.PlayCircle,
+                    contentDescription = "Play video",
+                    tint = Color.White,
+                    modifier = Modifier.size(40.dp),
+                )
+            }
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = attachment.fileName,
+                    style = MaterialTheme.typography.bodyMedium,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                val size = formatBytes(attachment.fileSizeBytes)
+                if (size.isNotEmpty()) {
+                    Text(
+                        text = size,
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            }
         } else {
             Icon(
-                imageVector = if (isPdf) Icons.Default.PictureAsPdf else Icons.Default.AttachFile,
+                imageVector = when {
+                    isPdf -> Icons.Default.PictureAsPdf
+                    attachment.isSpreadsheet -> Icons.Default.TableChart
+                    else -> Icons.Default.AttachFile
+                },
                 contentDescription = null,
                 tint = MaterialTheme.colorScheme.primary,
             )
@@ -101,7 +143,13 @@ fun AttachmentView(attachment: Attachment) {
                 modifier = Modifier
                     .weight(1f)
                     .clickable {
-                        if (isPdf) showPdf = true else openExternally(context, attachment.url)
+                        when {
+                            isPdf -> showPdf = true
+                            // Browsers can't render spreadsheets — save them instead.
+                            attachment.isSpreadsheet ->
+                                downloadAttachment(context, attachment.url, attachment.fileName)
+                            else -> openExternally(context, attachment.url)
+                        }
                     },
             ) {
                 Text(
@@ -141,6 +189,48 @@ fun AttachmentView(attachment: Attachment) {
             onDownload = { downloadAttachment(context, attachment.url, attachment.fileName) },
             onDismiss = { showPdf = false },
         )
+    }
+    if (showVideo) {
+        VideoPreviewDialog(
+            url = attachment.url,
+            title = attachment.fileName,
+            onDownload = { downloadAttachment(context, attachment.url, attachment.fileName) },
+            onDismiss = { showVideo = false },
+        )
+    }
+}
+
+@Composable
+private fun VideoPreviewDialog(
+    url: String,
+    title: String,
+    onDownload: () -> Unit,
+    onDismiss: () -> Unit,
+) {
+    Dialog(onDismissRequest = onDismiss, properties = DialogProperties(usePlatformDefaultWidth = false)) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(Color.Black.copy(alpha = 0.95f)),
+        ) {
+            AndroidView(
+                factory = { ctx ->
+                    VideoView(ctx).apply {
+                        setVideoURI(Uri.parse(url))
+                        setMediaController(MediaController(ctx).also { it.setAnchorView(this) })
+                        setOnPreparedListener { start() }
+                        setOnErrorListener { _, _, _ ->
+                            Toast.makeText(ctx, "Couldn't play video", Toast.LENGTH_SHORT).show()
+                            true
+                        }
+                    }
+                },
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(top = 56.dp, bottom = 16.dp),
+            )
+            PreviewTopBar(title, onDownload, onDismiss)
+        }
     }
 }
 

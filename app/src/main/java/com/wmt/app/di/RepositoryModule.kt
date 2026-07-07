@@ -6,12 +6,14 @@ import com.wmt.app.data.repository.NotificationRepositoryImpl
 import com.wmt.app.data.repository.ProjectRepositoryImpl
 import com.wmt.app.data.repository.SettingsRepositoryImpl
 import com.wmt.app.data.repository.TaskRepositoryImpl
+import com.wmt.app.data.repository.TodoRepositoryImpl
 import com.wmt.app.domain.repository.AuthRepository
 import com.wmt.app.domain.repository.DashboardRepository
 import com.wmt.app.domain.repository.NotificationRepository
 import com.wmt.app.domain.repository.ProjectRepository
 import com.wmt.app.domain.repository.SettingsRepository
 import com.wmt.app.domain.repository.TaskRepository
+import com.wmt.app.domain.repository.TodoRepository
 import dagger.Binds
 import dagger.Module
 import dagger.hilt.InstallIn
@@ -45,4 +47,8 @@ abstract class RepositoryModule {
     @Binds
     @Singleton
     abstract fun bindNotificationRepository(impl: NotificationRepositoryImpl): NotificationRepository
+
+    @Binds
+    @Singleton
+    abstract fun bindTodoRepository(impl: TodoRepositoryImpl): TodoRepository
 }

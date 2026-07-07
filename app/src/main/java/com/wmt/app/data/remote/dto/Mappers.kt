@@ -9,12 +9,15 @@ import com.wmt.app.domain.model.DashboardStats
 import com.wmt.app.domain.model.Department
 import com.wmt.app.domain.model.Notification
 import com.wmt.app.domain.model.NotificationData
+import com.wmt.app.domain.model.PersonalTodo
 import com.wmt.app.domain.model.Project
+import com.wmt.app.domain.model.SearchProjectHit
 import com.wmt.app.domain.model.ProjectDetail
 import com.wmt.app.domain.model.ProjectSection
 import com.wmt.app.domain.model.ProjectSummary
 import com.wmt.app.domain.model.Task
 import com.wmt.app.domain.model.TaskDetail
+import com.wmt.app.domain.model.TaskStatus
 import com.wmt.app.domain.model.Team
 import com.wmt.app.domain.model.User
 import com.wmt.app.domain.model.UserSummary
@@ -46,7 +49,7 @@ fun ProjectDto.toDomain() = Project(
 
 fun TaskDto.toDomain() = Task(
     id = id,
-    projectId = projectId,
+    projectId = projectId ?: project?.id ?: 0,
     title = title,
     description = description,
     status = status,
@@ -57,11 +60,27 @@ fun TaskDto.toDomain() = Task(
     project = project?.toDomain(),
     subtasksCount = subtasksCount,
     completedSubtasksCount = completedSubtasksCount,
+    isRecurring = isRecurring,
+    recurrenceFrequency = recurrenceFrequency,
+    recurrenceInterval = recurrenceInterval,
+    collaborators = collaborators.map { it.toDomain() },
+    creator = creator?.toDomain(),
 )
 
 fun ProjectDetailResponse.toDomain(): ProjectDetail {
-    val domainProject = project.toDomain()
     val allTasks = tasks.map { it.toDomain() }
+    // The show endpoint doesn't withCount() the project (unlike the index/dashboard),
+    // so its counts arrive as 0 — derive the progress counter from the task payload.
+    val domainProject = project.toDomain().let { p ->
+        if (p.tasksCount == 0 && allTasks.isNotEmpty()) {
+            p.copy(
+                tasksCount = allTasks.size,
+                completedTasksCount = allTasks.count { it.statusEnum == TaskStatus.DONE },
+            )
+        } else {
+            p
+        }
+    }
     val domainSections = if (sections.isNotEmpty()) {
         val tasksBySection = tasks.groupBy { it.sectionId }
         val mapped = sections.map { s ->
@@ -147,8 +166,35 @@ fun NotificationDto.toDomain(): Notification {
         ),
         readAt = readAt,
         createdAt = createdAt,
+        bookmarkedAt = bookmarkedAt,
+        archivedAt = archivedAt,
     )
 }
+
+fun SearchProjectDto.toDomain() = SearchProjectHit(id = id, name = name, status = status)
+
+/** Compact search/calendar task hit → domain Task (list rendering + navigation only). */
+fun SearchTaskDto.toDomain() = Task(
+    id = id,
+    projectId = projectId ?: 0,
+    title = title,
+    description = null,
+    status = status,
+    priority = priority,
+    assignee = null,
+    dueDate = dueDate,
+    startDate = null,
+    project = projectName?.let { ProjectSummary(id = projectId ?: 0, name = it) },
+    subtasksCount = 0,
+    completedSubtasksCount = 0,
+)
+
+fun PersonalTodoDto.toDomain() = PersonalTodo(
+    id = id,
+    title = title,
+    isCompleted = isCompleted ?: false,
+    position = position ?: 0,
+)
 
 /** Flattens an HTML snippet to plain text for compact list display (e.g. notifications). */
 private fun stripHtml(html: String): String =

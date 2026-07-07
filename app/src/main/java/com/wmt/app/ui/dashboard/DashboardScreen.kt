@@ -22,6 +22,8 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.rounded.Checklist
+import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material3.Badge
 import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -35,6 +37,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -69,10 +72,15 @@ fun DashboardScreen(
     onOpenProjects: () -> Unit = {},
     onOpenInbox: () -> Unit = {},
     onOpenProfile: () -> Unit = {},
+    onOpenSearch: () -> Unit = {},
+    onOpenTodos: () -> Unit = {},
     unreadCount: Int = 0,
     viewModel: DashboardViewModel = hiltViewModel(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
+    // Re-fetch silently whenever this screen comes back into view (e.g. after
+    // completing a task on the detail screen) so finished tasks drop out.
+    LaunchedEffect(Unit) { viewModel.onScreenVisible() }
     val scrollBehavior = TopAppBarDefaults.enterAlwaysScrollBehavior()
 
     Scaffold(
@@ -82,6 +90,12 @@ fun DashboardScreen(
                 title = "Home",
                 scrollBehavior = scrollBehavior,
                 actions = {
+                    IconButton(onClick = onOpenSearch) {
+                        Icon(Icons.Rounded.Search, contentDescription = "Search")
+                    }
+                    IconButton(onClick = onOpenTodos) {
+                        Icon(Icons.Rounded.Checklist, contentDescription = "My to-dos")
+                    }
                     IconButton(onClick = onOpenInbox) {
                         if (unreadCount > 0) {
                             BadgedBox(badge = { Badge { Text(unreadCount.coerceAtMost(99).toString()) } }) {
@@ -115,6 +129,7 @@ fun DashboardScreen(
                         stats = state.data!!.stats,
                         recentTasks = state.data!!.recentTasks,
                         projects = state.data!!.myProjects,
+                        userFirstName = state.userFirstName,
                         onTaskClick = onTaskClick,
                         onProjectClick = onProjectClick,
                         onOpenMyTasks = onOpenMyTasks,
@@ -137,6 +152,7 @@ private fun DashboardContent(
     stats: DashboardStats,
     recentTasks: List<Task>,
     projects: List<Project>,
+    userFirstName: String?,
     onTaskClick: (projectId: Int, taskId: Int) -> Unit,
     onProjectClick: (projectId: Int) -> Unit,
     onOpenMyTasks: () -> Unit,
@@ -161,7 +177,7 @@ private fun DashboardContent(
                 color = MaterialTheme.colorScheme.primary,
             )
             Text(
-                text = greeting(),
+                text = userFirstName?.let { "${greeting()}, $it" } ?: greeting(),
                 style = MaterialTheme.typography.headlineMedium,
                 fontWeight = FontWeight.Bold,
             )

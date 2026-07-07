@@ -1,7 +1,16 @@
 package com.wmt.app.data.remote.api
 
 import com.wmt.app.data.remote.dto.ApiList
+import com.wmt.app.data.remote.dto.AppSettingsDto
+import com.wmt.app.data.remote.dto.CalendarResponse
 import com.wmt.app.data.remote.dto.ChangePasswordRequest
+import com.wmt.app.data.remote.dto.CreateTodoRequest
+import com.wmt.app.data.remote.dto.PaginatedCommentsResponse
+import com.wmt.app.data.remote.dto.SearchResponse
+import com.wmt.app.data.remote.dto.SuccessResponse
+import com.wmt.app.data.remote.dto.TodoResponse
+import com.wmt.app.data.remote.dto.TodosResponse
+import com.wmt.app.data.remote.dto.UpdateTodoRequest
 import com.wmt.app.data.remote.dto.CreateProjectRequest
 import com.wmt.app.data.remote.dto.CreateTaskRequest
 import com.wmt.app.data.remote.dto.DashboardDto
@@ -124,8 +133,39 @@ interface WmtApi {
         @Part attachments: List<MultipartBody.Part>,
     ): MessageResponse
 
+    // ---- Personal (project-less) tasks. Same shapes as the project-nested routes. ----
+
+    @POST("api/tasks")
+    suspend fun createPersonalTask(@Body body: CreateTaskRequest): TaskResponse
+
+    @GET("api/tasks/{taskId}")
+    suspend fun personalTaskDetail(@Path("taskId") taskId: Int): TaskDetailResponse
+
+    @PUT("api/tasks/{taskId}")
+    suspend fun updatePersonalTask(
+        @Path("taskId") taskId: Int,
+        @Body body: UpdateTaskRequest,
+    ): TaskResponse
+
+    @DELETE("api/tasks/{taskId}")
+    suspend fun deletePersonalTask(@Path("taskId") taskId: Int)
+
+    @PATCH("api/tasks/{taskId}/patch")
+    suspend fun patchPersonalTask(
+        @Path("taskId") taskId: Int,
+        @Body body: PatchRequest,
+    ): TaskPatchResponse
+
+    @Multipart
+    @POST("api/tasks/{taskId}/comments")
+    suspend fun addPersonalTaskComment(
+        @Path("taskId") taskId: Int,
+        @Part("body") body: RequestBody,
+        @Part attachments: List<MultipartBody.Part>,
+    ): MessageResponse
+
     @GET("api/notifications")
-    suspend fun notifications(): ApiList<NotificationDto>
+    suspend fun notifications(@Query("filter") filter: String? = null): ApiList<NotificationDto>
 
     @GET("api/notifications/unread-count")
     suspend fun unreadCount(): UnreadCountResponse
@@ -135,6 +175,59 @@ interface WmtApi {
 
     @POST("api/notifications/read-all")
     suspend fun markAllNotificationsRead(): MessageResponse
+
+    @PATCH("api/notifications/{id}/bookmark")
+    suspend fun toggleNotificationBookmark(@Path("id") id: String): SuccessResponse
+
+    @PATCH("api/notifications/{id}/archive")
+    suspend fun archiveNotification(@Path("id") id: String): SuccessResponse
+
+    @PATCH("api/notifications/{id}/unarchive")
+    suspend fun unarchiveNotification(@Path("id") id: String): SuccessResponse
+
+    @GET("api/mobile/search")
+    suspend fun search(@Query("q") query: String): SearchResponse
+
+    @GET("api/settings")
+    suspend fun appSettings(): AppSettingsDto
+
+    @GET("api/calendar")
+    suspend fun calendar(@Query("month") month: String): CalendarResponse
+
+    @GET("api/projects/{projectId}/tasks/{taskId}/comments")
+    suspend fun olderComments(
+        @Path("projectId") projectId: Int,
+        @Path("taskId") taskId: Int,
+        @Query("before_id") beforeId: Int,
+        @Query("limit") limit: Int = 20,
+    ): PaginatedCommentsResponse
+
+    @GET("api/tasks/{taskId}/comments")
+    suspend fun olderPersonalComments(
+        @Path("taskId") taskId: Int,
+        @Query("before_id") beforeId: Int,
+        @Query("limit") limit: Int = 20,
+    ): PaginatedCommentsResponse
+
+    // ---- Personal to-dos ----
+
+    @GET("api/personal-todos")
+    suspend fun personalTodos(): TodosResponse
+
+    @POST("api/personal-todos")
+    suspend fun createPersonalTodo(@Body body: CreateTodoRequest): TodoResponse
+
+    @PATCH("api/personal-todos/{id}")
+    suspend fun updatePersonalTodo(
+        @Path("id") id: Int,
+        @Body body: UpdateTodoRequest,
+    ): TodoResponse
+
+    @DELETE("api/personal-todos/{id}")
+    suspend fun deletePersonalTodo(@Path("id") id: Int): SuccessResponse
+
+    @DELETE("api/personal-todos/clear-completed")
+    suspend fun clearCompletedTodos(): SuccessResponse
 
     @GET("api/notification-preferences")
     suspend fun notificationPreferences(): Map<String, Boolean>

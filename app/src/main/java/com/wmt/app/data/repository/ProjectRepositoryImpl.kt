@@ -10,6 +10,7 @@ import com.wmt.app.data.remote.dto.toDomain
 import com.wmt.app.data.remote.safeApiCall
 import com.wmt.app.domain.model.Project
 import com.wmt.app.domain.model.ProjectDetail
+import com.wmt.app.domain.model.SearchResults
 import com.wmt.app.domain.repository.ProjectRepository
 import com.wmt.app.util.Resource
 import kotlinx.coroutines.flow.Flow
@@ -42,6 +43,15 @@ class ProjectRepositoryImpl @Inject constructor(
 
     override suspend fun searchProjects(query: String): Resource<List<Project>> =
         safeApiCall(moshi) { api.projects(query).data.map { it.toDomain() } }
+
+    override suspend fun globalSearch(query: String): Resource<SearchResults> =
+        safeApiCall(moshi) {
+            val response = api.search(query)
+            SearchResults(
+                projects = response.projects.map { it.toDomain() },
+                tasks = response.tasks.map { it.toDomain() },
+            )
+        }
 
     override suspend fun projectDetail(projectId: Int): Resource<ProjectDetail> =
         safeApiCall(moshi) { api.projectDetail(projectId).toDomain() }

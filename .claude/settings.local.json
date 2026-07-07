@@ -37,7 +37,22 @@
       "PowerShell($env:JAVA_HOME = \"C:\\\\Program Files\\\\Android\\\\Android Studio\\\\jbr\"; & \"C:\\\\Users\\\\Adam\\\\AndroidStudioProjects\\\\wmt\\\\gradlew.bat\" -p \"C:\\\\Users\\\\Adam\\\\AndroidStudioProjects\\\\wmt\" :app:assembleDebug --console=plain 2>&1 | Select-Object -Last 12)",
       "PowerShell($env:JAVA_HOME = \"C:\\\\Program Files\\\\Android\\\\Android Studio\\\\jbr\"; & \"C:\\\\Users\\\\Adam\\\\AndroidStudioProjects\\\\wmt\\\\gradlew.bat\" -p \"C:\\\\Users\\\\Adam\\\\AndroidStudioProjects\\\\wmt\" :app:assembleDebug --console=plain 2>&1 | Select-Object -Last 10)",
       "PowerShell($env:JAVA_HOME = \"C:\\\\Program Files\\\\Android\\\\Android Studio\\\\jbr\"; & \"C:\\\\Users\\\\Adam\\\\AndroidStudioProjects\\\\wmt\\\\gradlew.bat\" -p \"C:\\\\Users\\\\Adam\\\\AndroidStudioProjects\\\\wmt\" :app:assembleDebug --console=plain 2>&1 | Select-Object -Last 30)",
-      "PowerShell($env:JAVA_HOME = \"C:\\\\Program Files\\\\Android\\\\Android Studio\\\\jbr\"; & \"C:\\\\Users\\\\Adam\\\\AndroidStudioProjects\\\\wmt\\\\gradlew.bat\" -p \"C:\\\\Users\\\\Adam\\\\AndroidStudioProjects\\\\wmt\" :app:assembleDebug --console=plain 2>&1 | Select-Object -Last 8)"
+      "PowerShell($env:JAVA_HOME = \"C:\\\\Program Files\\\\Android\\\\Android Studio\\\\jbr\"; & \"C:\\\\Users\\\\Adam\\\\AndroidStudioProjects\\\\wmt\\\\gradlew.bat\" -p \"C:\\\\Users\\\\Adam\\\\AndroidStudioProjects\\\\wmt\" :app:assembleDebug --console=plain 2>&1 | Select-Object -Last 8)",
+      "Bash(git clone *)",
+      "Read(//c/Users/Adam/Herd/**)",
+      "Read(//c/Users/Adam/**)",
+      "PowerShell($env:JAVA_HOME = \"C:\\\\Program Files\\\\Android\\\\Android Studio\\\\jbr\"; .\\\\gradlew.bat :app:assembleDebug --console=plain 2>$null | Select-String -Pattern \"compileDebugKotlin|BUILD|UP-TO-DATE\" | Select-Object -First 10)",
+      "Bash(curl -s -m 5 http://192.168.254.106/api/health)",
+      "Bash(echo \"exit=$?\")",
+      "Bash(curl -s -m 10 -X POST http://192.168.254.106/api/login -H \"Content-Type: application/json\" -H \"Accept: application/json\" -d '{\"email\":\"admin@wmt.com\",\"password\":\"password\",\"device_name\":\"claude-diагnostics\"}')",
+      "Bash(cat app/Policies/TaskPolicy.php)",
+      "Bash(ls app/Policies)",
+      "Bash(curl -s -m 10 http://192.168.254.106/api/my-tasks -H 'Authorization: Bearer 29|BWc8TZBKIUm52cqEIaKlxqMs6OYJdBIoW50tEsaS6c5f9432' -H 'Accept: application/json')",
+      "Bash(python -c ' *)",
+      "Bash(curl -s -m 10 -o /dev/null -w 'my-tasks HTTP=%{http_code}\\\\n' http://192.168.254.106/api/my-tasks -H 'Authorization: Bearer 29|BWc8TZBKIUm52cqEIaKlxqMs6OYJdBIoW50tEsaS6c5f9432' -H 'Accept: application/json')",
+      "Bash(curl -s -m 10 -w '\\\\nHTTP=%{http_code}\\\\n' http://192.168.254.106/api/tasks/999999 -H 'Authorization: Bearer 29|BWc8TZBKIUm52cqEIaKlxqMs6OYJdBIoW50tEsaS6c5f9432' -H 'Accept: application/json')",
+      "Bash(curl -s -m 10 http://192.168.254.106/api/projects -H 'Authorization: Bearer 29|BWc8TZBKIUm52cqEIaKlxqMs6OYJdBIoW50tEsaS6c5f9432' -H 'Accept: application/json')",
+      "Bash(curl -s -m 10 http://192.168.254.106/api/projects/6 -H 'Authorization: Bearer 29|BWc8TZBKIUm52cqEIaKlxqMs6OYJdBIoW50tEsaS6c5f9432' -H 'Accept: application/json')"
     ]
   }
 }

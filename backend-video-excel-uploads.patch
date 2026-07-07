@@ -1,0 +1,131 @@
+diff --git a/app/Http/Controllers/Api/TaskController.php b/app/Http/Controllers/Api/TaskController.php
+index f61a500..c7ef024 100644
+--- a/app/Http/Controllers/Api/TaskController.php
++++ b/app/Http/Controllers/Api/TaskController.php
+@@ -146,12 +146,10 @@ public function patchField(Request $request, Project $project, Task $task): Json
+ 
+     public function storeComment(Request $request, Project $project, Task $task): JsonResponse
+     {
+-        $maxKb = \App\Models\Setting::current()->max_upload_size * 1024;
+-
+         $request->validate([
+             'body' => ['required_without:attachments', 'nullable', 'string', 'max:2000'],
+             'attachments' => ['nullable', 'array', 'max:5'],
+-            'attachments.*' => ['file', 'mimes:jpg,jpeg,png,webp,pdf', "max:{$maxKb}"],
++            'attachments.*' => ['file', new \App\Rules\CommentAttachmentFile],
+         ]);
+ 
+         $comment = $task->comments()->create([
+diff --git a/app/Http/Requests/StoreTaskCommentRequest.php b/app/Http/Requests/StoreTaskCommentRequest.php
+index b572071..6022f33 100644
+--- a/app/Http/Requests/StoreTaskCommentRequest.php
++++ b/app/Http/Requests/StoreTaskCommentRequest.php
+@@ -2,7 +2,7 @@
+ 
+ namespace App\Http\Requests;
+ 
+-use App\Models\Setting;
++use App\Rules\CommentAttachmentFile;
+ use Illuminate\Foundation\Http\FormRequest;
+ 
+ class StoreTaskCommentRequest extends FormRequest
+@@ -14,26 +14,16 @@ public function authorize(): bool
+ 
+     public function rules(): array
+     {
+-        $maxSizeKb = Setting::current()->max_upload_size * 1024;
+-
+         return [
+             'body' => ['required_without:attachments', 'nullable', 'string', 'max:2000'],
+             'attachments' => ['nullable', 'array', 'max:5'],
+-            'attachments.*' => [
+-                'file',
+-                'mimes:jpg,jpeg,png,webp,pdf',
+-                "max:{$maxSizeKb}",
+-            ],
++            'attachments.*' => ['file', new CommentAttachmentFile],
+         ];
+     }
+ 
+     public function messages(): array
+     {
+-        $maxMb = Setting::current()->max_upload_size;
+-
+         return [
+-            'attachments.*.max' => "Each file must not exceed {$maxMb}MB.",
+-            'attachments.*.mimes' => 'Only JPG, PNG, WebP, and PDF files are allowed.',
+             'attachments.max' => 'You can attach up to 5 files per comment.',
+             'body.required_without' => 'A comment must have text or at least one attachment.',
+         ];
+diff --git a/app/Rules/CommentAttachmentFile.php b/app/Rules/CommentAttachmentFile.php
+new file mode 100644
+index 0000000..40c53eb
+--- /dev/null
++++ b/app/Rules/CommentAttachmentFile.php
+@@ -0,0 +1,54 @@
++<?php
++
++namespace App\Rules;
++
++use App\Models\Setting;
++use Closure;
++use Illuminate\Contracts\Validation\ValidationRule;
++use Illuminate\Http\UploadedFile;
++
++/**
++ * Validates a single comment attachment. Videos get their own fixed 50MB budget;
++ * documents/images/spreadsheets use the admin-configurable max_upload_size setting.
++ */
++class CommentAttachmentFile implements ValidationRule
++{
++    public const VIDEO_MAX_MB = 50;
++
++    private const VIDEO_EXTENSIONS = ['mp4', 'mov', 'webm', '3gp', 'mkv'];
++    private const DOCUMENT_EXTENSIONS = ['jpg', 'jpeg', 'png', 'webp', 'gif', 'heic', 'heif', 'pdf', 'xlsx', 'xls', 'csv'];
++
++    public function validate(string $attribute, mixed $value, Closure $fail): void
++    {
++        if (! $value instanceof UploadedFile || ! $value->isValid()) {
++            $fail('The attachment failed to upload.');
++
++            return;
++        }
++
++        $extension = strtolower($value->getClientOriginalExtension());
++        $mime = (string) $value->getMimeType();
++        $sizeMb = $value->getSize() / 1024 / 1024;
++
++        $isVideo = in_array($extension, self::VIDEO_EXTENSIONS, true) || str_starts_with($mime, 'video/');
++
++        if ($isVideo) {
++            if ($sizeMb > self::VIDEO_MAX_MB) {
++                $fail(sprintf('Videos must not exceed %dMB.', self::VIDEO_MAX_MB));
++            }
++
++            return;
++        }
++
++        if (! in_array($extension, self::DOCUMENT_EXTENSIONS, true)) {
++            $fail('Only images (JPG, PNG, WebP, GIF, HEIC), PDF, Excel (XLSX/XLS), CSV, and video files are allowed.');
++
++            return;
++        }
++
++        $maxMb = Setting::current()->max_upload_size;
++        if ($sizeMb > $maxMb) {
++            $fail("Each file must not exceed {$maxMb}MB.");
++        }
++    }
++}
+diff --git a/docker/php/custom.ini b/docker/php/custom.ini
+index fb67058..8175143 100644
+--- a/docker/php/custom.ini
++++ b/docker/php/custom.ini
+@@ -1,2 +1,7 @@
+ upload_tmp_dir = /tmp
+ sys_temp_dir = /tmp
++
++; Comment attachments: videos up to 50MB, up to 5 files per comment.
++upload_max_filesize = 60M
++post_max_size = 120M
++max_file_uploads = 20

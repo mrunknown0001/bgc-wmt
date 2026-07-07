@@ -13,6 +13,10 @@ data class Notification(
     val data: NotificationData,
     val readAt: String?,
     val createdAt: String,
+    val bookmarkedAt: String? = null,
+    val archivedAt: String? = null,
 ) {
     val isUnread: Boolean get() = readAt == null
+    val isBookmarked: Boolean get() = bookmarkedAt != null
+    val isArchived: Boolean get() = archivedAt != null
 }

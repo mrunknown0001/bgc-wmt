@@ -13,9 +13,29 @@ data class Task(
     val project: ProjectSummary?,
     val subtasksCount: Int,
     val completedSubtasksCount: Int,
+    val isRecurring: Boolean = false,
+    val recurrenceFrequency: String? = null,
+    val recurrenceInterval: Int? = null,
+    val collaborators: List<UserSummary> = emptyList(),
+    val creator: UserSummary? = null,
 ) {
     val statusEnum: TaskStatus get() = TaskStatus.from(status)
     val priorityEnum: TaskPriority get() = TaskPriority.from(priority)
+
+    /** "Repeats weekly" / "Repeats every 2 weeks" style label, or null when not recurring. */
+    val recurrenceLabel: String?
+        get() {
+            if (!isRecurring || recurrenceFrequency == null) return null
+            val unit = when (recurrenceFrequency) {
+                "daily" -> "day"
+                "weekly" -> "week"
+                "monthly" -> "month"
+                "yearly" -> "year"
+                else -> return null
+            }
+            val n = recurrenceInterval ?: 1
+            return if (n <= 1) "Repeats every $unit" else "Repeats every $n ${unit}s"
+        }
 }
 
 data class Comment(
@@ -34,6 +54,15 @@ data class Attachment(
     val url: String,
 ) {
     val isImage: Boolean get() = fileType.startsWith("image/")
+    val isVideo: Boolean get() = fileType.startsWith("video/") ||
+        listOf(".mp4", ".mov", ".webm", ".3gp", ".mkv").any { fileName.endsWith(it, ignoreCase = true) }
+    val isSpreadsheet: Boolean get() =
+        listOf(".xlsx", ".xls", ".csv").any { fileName.endsWith(it, ignoreCase = true) } ||
+            fileType in setOf(
+                "text/csv",
+                "application/vnd.ms-excel",
+                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            )
 }
 
 /** An entry in a task's activity timeline (optional, surfaced when present). */

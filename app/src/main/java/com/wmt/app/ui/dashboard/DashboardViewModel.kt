@@ -3,6 +3,7 @@ package com.wmt.app.ui.dashboard
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.wmt.app.domain.model.DashboardData
+import com.wmt.app.domain.repository.AuthRepository
 import com.wmt.app.domain.repository.DashboardRepository
 import com.wmt.app.util.NetworkMonitor
 import com.wmt.app.util.Resource
@@ -21,11 +22,14 @@ data class DashboardUiState(
     val error: String? = null,
     val refreshing: Boolean = false,
     val offline: Boolean = false,
+    /** Signed-in user's first name for the greeting hero ("Good morning, Adam"). */
+    val userFirstName: String? = null,
 )
 
 @HiltViewModel
 class DashboardViewModel @Inject constructor(
     private val repository: DashboardRepository,
+    private val authRepository: AuthRepository,
     private val networkMonitor: NetworkMonitor,
 ) : ViewModel() {
 
@@ -37,9 +41,30 @@ class DashboardViewModel @Inject constructor(
     init {
         load(isRefresh = false)
         observeConnectivity()
+        viewModelScope.launch {
+            authRepository.currentUser.collect { user ->
+                val firstName = user?.name?.trim()?.substringBefore(' ')?.takeIf { it.isNotBlank() }
+                _state.update { it.copy(userFirstName = firstName) }
+            }
+        }
     }
 
     fun refresh() = load(isRefresh = true)
+
+    /**
+     * Silently refetches when the screen re-enters composition (back-nav from task
+     * detail, tab switch) so completed/edited tasks don't linger stale. The first
+     * call (initial composition, right after init's load) is skipped.
+     */
+    fun onScreenVisible() {
+        if (firstVisible) {
+            firstVisible = false
+            return
+        }
+        load(isRefresh = false)
+    }
+
+    private var firstVisible = true
 
     private fun load(isRefresh: Boolean) {
         loadJob?.cancel()

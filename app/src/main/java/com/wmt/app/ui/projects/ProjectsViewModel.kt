@@ -69,6 +69,22 @@ class ProjectsViewModel @Inject constructor(
 
     fun refresh() = load(isRefresh = true)
 
+    /**
+     * Silently refetches when the screen re-enters composition (back-nav from a
+     * project, tab switch) so task-count/progress changes don't linger stale. The
+     * first call (initial composition, right after init's load) is skipped.
+     */
+    fun onScreenVisible() {
+        if (firstVisible) {
+            firstVisible = false
+            return
+        }
+        // Don't clobber active search results with the unfiltered list.
+        if (_state.value.query.isBlank()) load(isRefresh = false)
+    }
+
+    private var firstVisible = true
+
     fun clearCreateError() = _state.update { it.copy(createError = null) }
 
     fun createProject(
