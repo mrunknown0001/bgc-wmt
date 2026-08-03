@@ -88,6 +88,13 @@ class RootViewModel @Inject constructor(
                 authRepository.registerDeviceToken(token)
             }
         }
+        // Live unread badge: any event on the user's notification channel (or a socket
+        // reconnect) refreshes the count immediately, wherever the user is in the app.
+        viewModelScope.launch {
+            realtimeClient.inboxEvents.collect {
+                if (uiState.value.isLoggedIn) notificationRepository.refreshUnreadCount()
+            }
+        }
         // Periodically refresh the unread badge while authenticated.
         viewModelScope.launch {
             while (true) {

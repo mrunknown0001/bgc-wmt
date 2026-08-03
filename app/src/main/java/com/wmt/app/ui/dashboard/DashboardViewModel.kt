@@ -2,7 +2,9 @@ package com.wmt.app.ui.dashboard
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.wmt.app.data.remote.RealtimeClient
 import com.wmt.app.domain.model.DashboardData
+import com.wmt.app.fcm.InAppNotificationBus
 import com.wmt.app.domain.repository.AuthRepository
 import com.wmt.app.domain.repository.DashboardRepository
 import com.wmt.app.util.NetworkMonitor
@@ -31,6 +33,8 @@ class DashboardViewModel @Inject constructor(
     private val repository: DashboardRepository,
     private val authRepository: AuthRepository,
     private val networkMonitor: NetworkMonitor,
+    private val realtimeClient: RealtimeClient,
+    private val inAppBus: InAppNotificationBus,
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(DashboardUiState())
@@ -41,6 +45,10 @@ class DashboardViewModel @Inject constructor(
     init {
         load(isRefresh = false)
         observeConnectivity()
+        // Silent live refresh: notification events (assignment, comments, due dates)
+        // signal that the stats/task lists on screen may be stale.
+        viewModelScope.launch { realtimeClient.inboxEvents.collect { load(isRefresh = false) } }
+        viewModelScope.launch { inAppBus.messages.collect { load(isRefresh = false) } }
         viewModelScope.launch {
             authRepository.currentUser.collect { user ->
                 val firstName = user?.name?.trim()?.substringBefore(' ')?.takeIf { it.isNotBlank() }

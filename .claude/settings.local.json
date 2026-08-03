@@ -52,7 +52,31 @@
       "Bash(curl -s -m 10 -o /dev/null -w 'my-tasks HTTP=%{http_code}\\\\n' http://192.168.254.106/api/my-tasks -H 'Authorization: Bearer 29|BWc8TZBKIUm52cqEIaKlxqMs6OYJdBIoW50tEsaS6c5f9432' -H 'Accept: application/json')",
       "Bash(curl -s -m 10 -w '\\\\nHTTP=%{http_code}\\\\n' http://192.168.254.106/api/tasks/999999 -H 'Authorization: Bearer 29|BWc8TZBKIUm52cqEIaKlxqMs6OYJdBIoW50tEsaS6c5f9432' -H 'Accept: application/json')",
       "Bash(curl -s -m 10 http://192.168.254.106/api/projects -H 'Authorization: Bearer 29|BWc8TZBKIUm52cqEIaKlxqMs6OYJdBIoW50tEsaS6c5f9432' -H 'Accept: application/json')",
-      "Bash(curl -s -m 10 http://192.168.254.106/api/projects/6 -H 'Authorization: Bearer 29|BWc8TZBKIUm52cqEIaKlxqMs6OYJdBIoW50tEsaS6c5f9432' -H 'Accept: application/json')"
+      "Bash(curl -s -m 10 http://192.168.254.106/api/projects/6 -H 'Authorization: Bearer 29|BWc8TZBKIUm52cqEIaKlxqMs6OYJdBIoW50tEsaS6c5f9432' -H 'Accept: application/json')",
+      "Bash(export JAVA_HOME=\"C:\\\\Program Files\\\\Android\\\\Android Studio\\\\jbr\")",
+      "Bash(./gradlew.bat :app:compileDebugKotlin --console=plain -q)",
+      "Bash(./gradlew.bat :app:assembleDebug --console=plain -q)",
+      "Bash(echo \"EXIT=$?\")",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" -m 8 http://192.168.254.106/api/login -X POST -H \"Content-Type: application/json\" -H \"Accept: application/json\" -d '{\"email\":\"admin@wmt.com\",\"password\":\"password\",\"device_name\":\"claude-debug\"}')",
+      "Bash(curl -s -m 8 http://192.168.254.106/api/login -X POST -H \"Content-Type: application/json\" -H \"Accept: application/json\" -d '{\"email\":\"admin@wmt.com\",\"password\":\"password\",\"device_name\":\"claude-debug\"}')",
+      "Bash(curl -s -m 15 https://raw.githubusercontent.com/mrunknown0001/wmt/master/app/Http/Resources/UserResource.php)",
+      "Bash(curl -s -m 15 https://raw.githubusercontent.com/mrunknown0001/wmt/master/app/Models/User.php)",
+      "Bash(echo \"exit:$?\")",
+      "Bash(curl -s -m 15 \"https://api.github.com/search/code?q=UserResource+repo:mrunknown0001/wmt\")",
+      "Bash(curl -s -m 15 https://raw.githubusercontent.com/mrunknown0001/wmt/master/app/Http/Controllers/Api/AuthController.php)",
+      "Bash(ipconfig)",
+      "Bash(node probe.js)",
+      "PowerShell($env:JAVA_HOME = \"C:\\\\Program Files\\\\Android\\\\Android Studio\\\\jbr\"; .\\\\gradlew.bat :app:compileDebugKotlin --console=plain)",
+      "Bash(curl -s -m 15 https://raw.githubusercontent.com/laravel/framework/v13.17.0/src/Illuminate/Foundation/Configuration/ApplicationBuilder.php)",
+      "Bash(awk '/function withBroadcasting/,/^    }/')",
+      "PowerShell(& \"C:\\\\Users\\\\Adam\\\\AppData\\\\Local\\\\Android\\\\Sdk\\\\platform-tools\\\\adb.exe\" devices)",
+      "PowerShell(Get-Item \"app\\\\build\\\\outputs\\\\apk\\\\debug\\\\app-debug.apk\" | Select-Object Name, LastWriteTime, @{N='SizeMB';E={[math]::Round\\($_.Length/1MB,1\\)}})",
+      "PowerShell(git diff --name-only | ForEach-Object { Get-Item $_ } | Select-Object LastWriteTime, Name | Sort-Object LastWriteTime -Descending)",
+      "PowerShell($env:JAVA_HOME = \"C:\\\\Program Files\\\\Android\\\\Android Studio\\\\jbr\"; .\\\\gradlew.bat clean :app:assembleDebug --console=plain)",
+      "PowerShell(Get-Content \"C:\\\\Users\\\\Adam\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\C--Users-Adam-AndroidStudioProjects-wmt\\\\80e3127d-6526-48af-a8d0-a814f2917d52\\\\tasks\\\\bsny423s7.output\" -Tail 5; Get-Item \"app\\\\build\\\\outputs\\\\apk\\\\debug\\\\app-debug.apk\" | Select-Object Name, LastWriteTime, @{N='SizeMB';E={[math]::Round\\($_.Length/1MB,1\\)}}; & \"C:\\\\Users\\\\Adam\\\\AppData\\\\Local\\\\Android\\\\Sdk\\\\platform-tools\\\\adb.exe\" devices)",
+      "PowerShell(git fetch *)",
+      "PowerShell(git diff *)",
+      "PowerShell(git *)"
     ]
   }
 }

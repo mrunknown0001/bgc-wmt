@@ -20,7 +20,6 @@ import com.wmt.app.data.remote.dto.LoginResponse
 import com.wmt.app.data.remote.dto.LogoutOtherDevicesRequest
 import com.wmt.app.data.remote.dto.MessageResponse
 import com.wmt.app.data.remote.dto.NotificationDto
-import com.wmt.app.data.remote.dto.NotificationPreferenceRequest
 import com.wmt.app.data.remote.dto.PatchRequest
 import com.wmt.app.data.remote.dto.MyTasksResponse
 import com.wmt.app.data.remote.dto.ProjectDetailResponse
@@ -228,12 +227,4 @@ interface WmtApi {
 
     @DELETE("api/personal-todos/clear-completed")
     suspend fun clearCompletedTodos(): SuccessResponse
-
-    @GET("api/notification-preferences")
-    suspend fun notificationPreferences(): Map<String, Boolean>
-
-    @POST("api/notification-preferences")
-    suspend fun updateNotificationPreference(
-        @Body body: NotificationPreferenceRequest,
-    ): MessageResponse
 }

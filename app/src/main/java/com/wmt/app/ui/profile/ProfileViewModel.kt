@@ -5,7 +5,6 @@ import androidx.lifecycle.viewModelScope
 import com.google.firebase.messaging.FirebaseMessaging
 import com.wmt.app.domain.model.User
 import com.wmt.app.domain.repository.AuthRepository
-import com.wmt.app.domain.repository.NotificationRepository
 import com.wmt.app.domain.repository.SettingsRepository
 import com.wmt.app.util.Resource
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -22,7 +21,6 @@ import javax.inject.Inject
 data class ProfileUiState(
     val user: User? = null,
     val serverUrl: String? = null,
-    val preferences: Map<String, Boolean> = emptyMap(),
     val themeMode: String = "system",
 )
 
@@ -42,19 +40,16 @@ data class SignOutOthersUiState(
 class ProfileViewModel @Inject constructor(
     private val authRepository: AuthRepository,
     private val settingsRepository: SettingsRepository,
-    private val notificationRepository: NotificationRepository,
 ) : ViewModel() {
 
     val state: StateFlow<ProfileUiState> = combine(
         authRepository.currentUser,
         settingsRepository.serverUrl,
-        notificationRepository.preferences,
         settingsRepository.themeMode,
-    ) { user, serverUrl, preferences, themeMode ->
+    ) { user, serverUrl, themeMode ->
         ProfileUiState(
             user = user,
             serverUrl = serverUrl,
-            preferences = preferences,
             themeMode = themeMode,
         )
     }.stateIn(
@@ -140,19 +135,10 @@ class ProfileViewModel @Inject constructor(
         viewModelScope.launch {
             runCatching { authRepository.refreshProfile() }
         }
-        viewModelScope.launch {
-            runCatching { notificationRepository.refreshPreferences() }
-        }
     }
 
     fun setTheme(mode: String) {
         viewModelScope.launch { settingsRepository.setThemeMode(mode) }
-    }
-
-    fun setPreference(type: String, enabled: Boolean) {
-        viewModelScope.launch {
-            notificationRepository.setPreference(type, enabled)
-        }
     }
 
     fun logout(onDone: () -> Unit) {

@@ -44,6 +44,14 @@ object DateUtils {
 
     fun isOverdue(raw: String?): Boolean = (daysUntil(raw) ?: 1L) < 0L
 
+    /** True when a completion timestamp lands after the end of the due date's day. */
+    fun isCompletedLate(dueDate: String?, completedAt: String?): Boolean {
+        val due = parseDate(dueDate) ?: return false
+        val completed = parseInstant(completedAt) ?: return false
+        val endOfDueDay = due.plusDays(1).atStartOfDay(ZoneId.systemDefault()).toInstant()
+        return completed >= endOfDueDay
+    }
+
     /** Compact "x ago" / "in x" style relative label for a timestamp. */
     fun timeAgo(raw: String?, now: Instant = Instant.now()): String {
         val instant = parseInstant(raw) ?: return ""

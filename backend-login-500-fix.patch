@@ -1,0 +1,12 @@
+diff --git a/app/Http/Resources/UserResource.php b/app/Http/Resources/UserResource.php
+index 8d57f51..d601ea4 100644
+--- a/app/Http/Resources/UserResource.php
++++ b/app/Http/Resources/UserResource.php
+@@ -23,7 +23,6 @@ public function toArray(Request $request): array
+                 'name' => $this->team->name,
+             ]),
+             'roles' => $this->getRoleNames(),
+-            'notification_preferences' => $this->getNotificationPreferences(),
+         ];
+     }
+ }

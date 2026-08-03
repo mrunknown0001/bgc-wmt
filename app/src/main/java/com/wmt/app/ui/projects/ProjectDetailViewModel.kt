@@ -3,6 +3,7 @@ package com.wmt.app.ui.projects
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.wmt.app.data.remote.RealtimeClient
 import com.wmt.app.domain.model.ProjectDetail
 import com.wmt.app.domain.model.Task
 import com.wmt.app.domain.model.TaskStatus
@@ -34,6 +35,7 @@ data class ProjectDetailUiState(
 class ProjectDetailViewModel @Inject constructor(
     private val repository: ProjectRepository,
     private val taskRepository: TaskRepository,
+    private val realtimeClient: RealtimeClient,
     savedStateHandle: SavedStateHandle,
 ) : ViewModel() {
 
@@ -44,6 +46,9 @@ class ProjectDetailViewModel @Inject constructor(
 
     init {
         load()
+        // Live updates: the backend broadcasts task create/update/delete (and automation
+        // runs) on the project channel; refetch silently whenever it fires.
+        viewModelScope.launch { realtimeClient.observeProject(projectId).collect { load() } }
     }
 
     /**

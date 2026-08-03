@@ -386,6 +386,31 @@ private fun TaskDetailContent(
                 }
                 MetaRow(label = "Due date", value = DateUtils.formatDate(task.dueDate) ?: "—")
                 MetaRow(label = "Start date", value = DateUtils.formatDate(task.startDate) ?: "—")
+                task.completedAt?.let { completedAt ->
+                    val late = DateUtils.isCompletedLate(task.dueDate, completedAt)
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        Text(
+                            text = "Completed",
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.width(96.dp),
+                        )
+                        Text(
+                            text = DateUtils.formatDateTime(completedAt) ?: "—",
+                            style = MaterialTheme.typography.bodyMedium,
+                        )
+                        if (late) {
+                            Text(
+                                text = "Late",
+                                style = MaterialTheme.typography.labelMedium,
+                                color = MaterialTheme.colorScheme.error,
+                            )
+                        }
+                    }
+                }
                 task.recurrenceLabel?.let { label ->
                     Row(
                         verticalAlignment = Alignment.CenterVertically,

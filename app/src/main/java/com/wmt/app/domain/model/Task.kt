@@ -10,6 +10,7 @@ data class Task(
     val assignee: UserSummary?,
     val dueDate: String?,
     val startDate: String?,
+    val completedAt: String? = null,
     val project: ProjectSummary?,
     val subtasksCount: Int,
     val completedSubtasksCount: Int,

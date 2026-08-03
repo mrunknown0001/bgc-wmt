@@ -57,6 +57,7 @@ fun TaskDto.toDomain() = Task(
     assignee = assignee?.toDomain(),
     dueDate = dueDate,
     startDate = startDate,
+    completedAt = completedAt,
     project = project?.toDomain(),
     subtasksCount = subtasksCount,
     completedSubtasksCount = completedSubtasksCount,

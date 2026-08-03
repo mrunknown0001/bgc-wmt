@@ -17,6 +17,7 @@ data class TaskDto(
     @Json(name = "assignee") val assignee: UserSummaryDto? = null,
     @Json(name = "due_date") val dueDate: String? = null,
     @Json(name = "start_date") val startDate: String? = null,
+    @Json(name = "completed_at") val completedAt: String? = null,
     @Json(name = "project") val project: ProjectSummaryDto? = null,
     @Json(name = "subtasks_count") val subtasksCount: Int = 0,
     @Json(name = "completed_subtasks_count") val completedSubtasksCount: Int = 0,

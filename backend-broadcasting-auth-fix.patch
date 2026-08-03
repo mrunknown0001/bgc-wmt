@@ -1,0 +1,17 @@
+diff --git a/routes/api.php b/routes/api.php
+index 252c73a..4645f99 100644
+--- a/routes/api.php
++++ b/routes/api.php
+@@ -21,7 +21,11 @@
+ use Illuminate\Support\Facades\Broadcast;
+ use Illuminate\Support\Facades\Route;
+ 
+-Broadcast::routes(['prefix' => 'api', 'middleware' => ['auth:sanctum']]);
++// Private-channel auth for the mobile app (Bearer token). Registered explicitly with
++// the framework controller instead of Broadcast::routes(), which silently no-ops when
++// a route cache is present and never registered on the deployed server.
++Route::match(['get', 'post'], '/broadcasting/auth', [\Illuminate\Broadcasting\BroadcastController::class, 'authenticate'])
++    ->middleware('auth:sanctum');
+ 
+ // Public
+ Route::get('/health', fn () => response()->json(['status' => 'ok', 'app' => config('app.name')]));

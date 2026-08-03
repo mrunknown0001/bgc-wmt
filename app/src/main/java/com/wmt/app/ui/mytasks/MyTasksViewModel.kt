@@ -2,8 +2,10 @@ package com.wmt.app.ui.mytasks
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.wmt.app.data.remote.RealtimeClient
 import com.wmt.app.domain.model.Task
 import com.wmt.app.domain.model.TaskPriority
+import com.wmt.app.fcm.InAppNotificationBus
 import com.wmt.app.domain.model.TaskStatus
 import com.wmt.app.domain.repository.TaskRepository
 import com.wmt.app.util.DateUtils
@@ -58,6 +60,8 @@ data class MyTasksUiState(
 class MyTasksViewModel @Inject constructor(
     private val repository: TaskRepository,
     private val networkMonitor: NetworkMonitor,
+    private val realtimeClient: RealtimeClient,
+    private val inAppBus: InAppNotificationBus,
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(MyTasksUiState())
@@ -68,6 +72,10 @@ class MyTasksViewModel @Inject constructor(
     init {
         load(isRefresh = false)
         observeConnectivity()
+        // Silent live refresh: notification events (assignment, comments, due dates)
+        // signal that the visible task list may be stale.
+        viewModelScope.launch { realtimeClient.inboxEvents.collect { load(isRefresh = false) } }
+        viewModelScope.launch { inAppBus.messages.collect { load(isRefresh = false) } }
     }
 
     fun refresh() = load(isRefresh = true)

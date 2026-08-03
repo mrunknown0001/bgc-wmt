@@ -26,9 +26,3 @@ data class NotificationDto(
     @Json(name = "archived_at") val archivedAt: String? = null,
     @Json(name = "created_at") val createdAt: String = "",
 )
-
-@JsonClass(generateAdapter = true)
-data class NotificationPreferenceRequest(
-    @Json(name = "type") val type: String,
-    @Json(name = "enabled") val enabled: Boolean,
-)

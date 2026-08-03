@@ -138,9 +138,6 @@ interface NotificationRepository {
     fun incrementUnreadLocally()
     suspend fun markRead(id: String): Resource<Unit>
     suspend fun markAllRead(): Resource<Unit>
-    val preferences: Flow<Map<String, Boolean>>
-    suspend fun refreshPreferences(): Resource<Unit>
-    suspend fun setPreference(type: String, enabled: Boolean): Resource<Unit>
 }
 
 /** Lightweight personal checklist (separate from project/standalone tasks). */

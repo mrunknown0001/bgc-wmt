@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.wmt.app.domain.model.Notification
 import com.wmt.app.data.remote.RealtimeClient
+import com.wmt.app.fcm.InAppNotificationBus
 import com.wmt.app.domain.repository.NotificationRepository
 import com.wmt.app.util.NetworkMonitor
 import com.wmt.app.util.Resource
@@ -40,6 +41,7 @@ class InboxViewModel @Inject constructor(
     private val repository: NotificationRepository,
     private val networkMonitor: NetworkMonitor,
     private val realtimeClient: RealtimeClient,
+    private val inAppBus: InAppNotificationBus,
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(InboxUiState())
@@ -51,8 +53,11 @@ class InboxViewModel @Inject constructor(
         load(isRefresh = false)
         viewModelScope.launch { repository.refreshUnreadCount() }
         observeConnectivity()
-        // Live updates: refresh when the user's notification channel fires.
+        // Live updates: refresh when the user's notification channel fires, and on
+        // foreground FCM pushes (covers the websocket being down — the push already
+        // proves a new notification exists).
         viewModelScope.launch { realtimeClient.inboxEvents.collect { poll() } }
+        viewModelScope.launch { inAppBus.messages.collect { poll() } }
     }
 
     fun refresh() {
