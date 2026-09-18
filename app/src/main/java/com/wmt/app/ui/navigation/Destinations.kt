@@ -36,6 +36,7 @@ object MainRoutes {
     const val APPROVAL_DETAIL = "approval/{projectId}/{requestId}"
     const val APPROVAL_NEW = "approval/new"
     const val APPROVAL_TRAIL = "approval/trail"
+    const val TIMESHEET = "task/{taskId}/time-logs"
 
     /** One route for both raising and editing; requestId 0 means a new request. */
     const val APPROVAL_FORM = "approval/form/{projectId}?requestId={requestId}"
@@ -43,6 +44,8 @@ object MainRoutes {
     fun projectDetail(projectId: Int) = "project/$projectId"
     fun taskDetail(projectId: Int, taskId: Int) = "task/$projectId/$taskId"
     fun approvalDetail(projectId: Int, requestId: Int) = "approval/$projectId/$requestId"
+
+    fun timesheet(taskId: Int) = "task/$taskId/time-logs"
 
     fun approvalForm(projectId: Int, requestId: Int = 0) =
         "approval/form/$projectId?requestId=$requestId"

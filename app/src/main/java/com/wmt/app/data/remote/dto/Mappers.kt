@@ -17,6 +17,8 @@ import com.wmt.app.domain.model.ProjectSection
 import com.wmt.app.domain.model.ProjectSummary
 import com.wmt.app.domain.model.Task
 import com.wmt.app.domain.model.TaskDetail
+import com.wmt.app.domain.model.PausePreview
+import com.wmt.app.domain.model.TaskClock
 import com.wmt.app.domain.model.TaskStatus
 import com.wmt.app.domain.model.Team
 import com.wmt.app.domain.model.User
@@ -157,6 +159,27 @@ fun TaskDetailResponse.toDomain() = TaskDetail(
     activities = activities.map { it.toDomain() },
     members = members.map { it.toDomain() },
     subtasks = subtasks.map { it.toDomain() },
+    clock = toClock(),
+)
+
+/**
+ * The clock, assembled from the two halves the payload carries: the motion columns on
+ * the task itself, and the figures and switches the endpoint computes alongside it.
+ */
+private fun TaskDetailResponse.toClock() = TaskClock(
+    startedAt = task.startedAt,
+    pausedAt = task.motionPausedAt,
+    resumedAt = task.motionResumedAt,
+    timeInMotionMinutes = timeInMotionMinutes,
+    loggedMinutes = loggedMinutes,
+    pausedMinutes = pausedMinutes ?: task.motionPausedMinutes,
+    isVisible = showTimeInMotion,
+    isProjectClosed = projectIsClosed,
+    // Matches the server: a finished task refuses a start, and cancelled counts even
+    // though only done is stamped with a completion time.
+    isTaskFinished = task.completedAt != null ||
+        task.status == TaskStatus.DONE.raw ||
+        task.status == TaskStatus.CANCELLED.raw,
 )
 
 fun NotificationDto.toDomain(): Notification {
@@ -225,4 +248,29 @@ fun DashboardDto.toDomain() = DashboardData(
     ),
     recentTasks = recentTasks.map { it.toDomain() },
     myProjects = myProjects.map { it.toDomain() },
+)
+
+/**
+ * A clock response onto the existing clock.
+ *
+ * Start answers with only the fields it touched, so the previous state is carried
+ * forward rather than blanked: pausing after a start must not lose the project switch
+ * that decided the strip was shown in the first place.
+ */
+fun TaskClockDto.toDomain(previous: TaskClock): TaskClock = previous.copy(
+    startedAt = startedAt,
+    pausedAt = motionPausedAt,
+    resumedAt = motionResumedAt,
+    timeInMotionMinutes = timeInMotionMinutes ?: previous.timeInMotionMinutes,
+    pausedMinutes = motionPausedMinutes ?: previous.pausedMinutes,
+    // Only a pause reports minutes, and they add to the day's running total.
+    loggedMinutes = loggedMinutes?.let { (previous.loggedMinutes ?: 0) + it }
+        ?: previous.loggedMinutes,
+)
+
+fun PausePreviewDto.toDomain() = PausePreview(
+    suggestedMinutes = suggestedMinutes,
+    from = from,
+    alreadyLoggedToday = alreadyLoggedToday,
+    creditedTo = creditedTo,
 )

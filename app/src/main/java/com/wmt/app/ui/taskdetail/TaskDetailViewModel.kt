@@ -5,6 +5,8 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.wmt.app.data.remote.RealtimeClient
 import com.wmt.app.domain.model.Comment
+import com.wmt.app.domain.model.PausePreview
+import com.wmt.app.domain.model.TaskClock
 import com.wmt.app.domain.model.TaskDetail
 import com.wmt.app.domain.model.TaskStatus
 import com.wmt.app.domain.repository.SettingsRepository
@@ -32,6 +34,10 @@ data class TaskDetailUiState(
     val loadingMoreComments: Boolean = false,
     /** Server-configured general attachment cap (videos have a fixed 50MB cap). */
     val maxUploadMb: Int = 10,
+    /** A clock action is in flight; the buttons wait rather than queueing presses. */
+    val clockBusy: Boolean = false,
+    /** Non-null while the pause dialog is open, holding what the server would record. */
+    val pausePreview: PausePreview? = null,
     /** Increments each time the user completes this task or a subtask — drives confetti. */
     val celebrations: Int = 0,
 ) {
@@ -122,6 +128,71 @@ class TaskDetailViewModel @Inject constructor(
             val result = repository.taskDetail(projectId, taskId)
             if (result is Resource.Success) {
                 _state.update { it.copy(detail = result.data) }
+            }
+        }
+    }
+
+    /** The clock as the last response left it. */
+    private val clock get() = _state.value.detail?.clock ?: TaskClock()
+
+    fun startClock() = runClockAction { repository.startClock(projectId, taskId, clock) }
+
+    fun resumeClock() = runClockAction { repository.resumeClock(projectId, taskId, clock) }
+
+    /**
+     * Opens the pause dialog with the server's own suggestion.
+     *
+     * The figure is asked for rather than counted here: the server knows what has
+     * already been logged today and whose day it lands on, neither of which the phone
+     * can work out.
+     */
+    fun requestPause() {
+        if (_state.value.clockBusy) return
+        _state.update { it.copy(clockBusy = true) }
+        viewModelScope.launch {
+            when (val result = repository.pausePreview(projectId, taskId)) {
+                is Resource.Success -> _state.update {
+                    it.copy(clockBusy = false, pausePreview = result.data)
+                }
+                is Resource.Error -> _state.update {
+                    it.copy(clockBusy = false, error = result.error.message)
+                }
+                is Resource.Loading -> Unit
+            }
+        }
+    }
+
+    fun dismissPause() = _state.update { it.copy(pausePreview = null) }
+
+    fun confirmPause(minutes: Int, note: String?) {
+        _state.update { it.copy(pausePreview = null) }
+        runClockAction { repository.pauseClock(projectId, taskId, minutes, note, clock) }
+    }
+
+    /**
+     * Runs a clock call and folds the reply into the detail on screen.
+     *
+     * Followed by a reload because starting also moves the task to in progress, and a
+     * pause writes a time log: both change more of the record than the reply carries.
+     */
+    private fun runClockAction(action: suspend () -> Resource<TaskClock>) {
+        if (_state.value.clockBusy) return
+        _state.update { it.copy(clockBusy = true) }
+        viewModelScope.launch {
+            when (val result = action()) {
+                is Resource.Success -> {
+                    _state.update { state ->
+                        state.copy(
+                            clockBusy = false,
+                            detail = state.detail?.copy(clock = result.data),
+                        )
+                    }
+                    poll()
+                }
+                is Resource.Error -> _state.update {
+                    it.copy(clockBusy = false, error = result.error.message)
+                }
+                is Resource.Loading -> Unit
             }
         }
     }

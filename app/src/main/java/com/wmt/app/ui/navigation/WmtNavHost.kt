@@ -56,6 +56,7 @@ import com.wmt.app.ui.projects.ProjectDetailScreen
 import com.wmt.app.ui.projects.ProjectsScreen
 import com.wmt.app.ui.search.SearchScreen
 import com.wmt.app.ui.taskdetail.TaskDetailScreen
+import com.wmt.app.ui.timesheet.TimesheetScreen
 import com.wmt.app.ui.todos.TodosScreen
 import kotlinx.coroutines.flow.Flow
 
@@ -318,6 +319,12 @@ private fun MainNavHost(
                 },
             )
         }
+        composable(
+            route = MainRoutes.TIMESHEET,
+            arguments = listOf(navArgument("taskId") { type = NavType.IntType }),
+        ) {
+            TimesheetScreen(onBack = { navController.popBackStack() })
+        }
         composable(MainRoutes.APPROVAL_TRAIL) {
             ApprovalTrailScreen(
                 onBack = { navController.popBackStack() },
@@ -379,6 +386,7 @@ private fun MainNavHost(
             TaskDetailScreen(
                 onBack = { navController.popBackStack() },
                 onOpenTask = { p, t -> navController.navigate(MainRoutes.taskDetail(p, t)) },
+                onOpenTimesheet = { taskId -> navController.navigate(MainRoutes.timesheet(taskId)) },
             )
         }
     }

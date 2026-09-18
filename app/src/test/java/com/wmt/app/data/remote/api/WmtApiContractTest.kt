@@ -3,6 +3,10 @@ package com.wmt.app.data.remote.api
 import com.squareup.moshi.Moshi
 import com.wmt.app.data.remote.AttachmentPartFactory
 import com.wmt.app.data.remote.dto.ApprovalAdvanceRequest
+import com.wmt.app.data.remote.dto.AddTimeLogRequest
+import com.wmt.app.data.remote.dto.AmendTimeLogRequest
+import com.wmt.app.data.remote.dto.PauseTaskRequest
+import com.wmt.app.data.remote.dto.ReviewAmendmentRequest
 import com.wmt.app.data.remote.dto.UpdateApprovalItemRequest
 import kotlinx.coroutines.test.runTest
 import okhttp3.Interceptor
@@ -247,6 +251,87 @@ class WmtApiContractTest {
         val body = lastBodyText()
         assertTrue(body, body.contains("name=\"body\""))
         assertTrue(body, body.contains("Looks fine"))
+    }
+
+    @Test
+    fun `the clock routes use the verbs the server exposes`() = runTest {
+        // PATCH rather than POST: these move a task between states rather than
+        // creating anything, and the server registers them that way.
+        api.startTaskClock(projectId = 4, taskId = 12)
+        assertSent("PATCH", "/api/projects/4/tasks/12/start")
+
+        api.resumeTaskClock(projectId = 4, taskId = 12)
+        assertSent("PATCH", "/api/projects/4/tasks/12/resume")
+
+        // The preview is a read, so it is a GET while its siblings are PATCH.
+        api.taskPausePreview(projectId = 4, taskId = 12)
+        assertSent("GET", "/api/projects/4/tasks/12/pause-preview")
+    }
+
+    @Test
+    fun `pausing sends the minutes and the note as json`() = runTest {
+        api.pauseTaskClock(
+            projectId = 4,
+            taskId = 12,
+            body = PauseTaskRequest(minutes = 95, note = "Site visit"),
+        )
+
+        assertSent("PATCH", "/api/projects/4/tasks/12/pause")
+        val body = lastBodyText()
+        assertTrue(body, body.contains("\"minutes\":95"))
+        assertTrue(body, body.contains("\"note\":\"Site visit\""))
+    }
+
+    @Test
+    fun `the timesheet reads and deletes by the ids the routes expect`() = runTest {
+        // Task-scoped to read, log-scoped to delete: they are different resources.
+        api.taskTimeLogs(taskId = 12)
+        assertSent("GET", "/api/tasks/12/time-logs")
+
+        api.deleteTimeLog(timeLogId = 77)
+        assertSent("DELETE", "/api/time-logs/77")
+    }
+
+    @Test
+    fun `a correction sends the duration as typed, not as minutes`() = runTest {
+        api.amendTimeLog(
+            timeLogId = 77,
+            body = AmendTimeLogRequest(duration = "1:30", reason = "Clock left running"),
+        )
+
+        assertSent("POST", "/api/time-logs/77/amendments")
+        val body = lastBodyText()
+        // The server parses 1.5, 1:30 and 90m alike; converting here would lose what
+        // the person actually wrote.
+        assertTrue(body, body.contains("\"duration\":\"1:30\""))
+        assertTrue(body, body.contains("\"reason\":\"Clock left running\""))
+    }
+
+    @Test
+    fun `asking for an entry on a past day hangs off the task, not a log`() = runTest {
+        api.addTimeLogEntry(
+            taskId = 12,
+            body = AddTimeLogRequest(
+                duration = "90m",
+                loggedOn = "2026-09-17",
+                reason = "Worked offline",
+            ),
+        )
+
+        // There is no entry to attach it to yet, which is the whole point of the ask.
+        assertSent("POST", "/api/tasks/12/time-log-amendments")
+        val body = lastBodyText()
+        assertTrue(body, body.contains("\"logged_on\":\"2026-09-17\""))
+    }
+
+    @Test
+    fun `deciding a correction posts to the matching route`() = runTest {
+        api.approveAmendment(amendmentId = 5, body = ReviewAmendmentRequest(note = "Agreed"))
+        assertSent("POST", "/api/time-log-amendments/5/approve")
+        assertTrue(lastBodyText().contains("\"note\":\"Agreed\""))
+
+        api.rejectAmendment(amendmentId = 5, body = ReviewAmendmentRequest(note = null))
+        assertSent("POST", "/api/time-log-amendments/5/reject")
     }
 
     private fun textPart(value: String) = AttachmentPartFactory.textPart(value)

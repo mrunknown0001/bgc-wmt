@@ -38,11 +38,20 @@ import com.wmt.app.data.remote.dto.LogoutOtherDevicesRequest
 import com.wmt.app.data.remote.dto.MessageResponse
 import com.wmt.app.data.remote.dto.NotificationDto
 import com.wmt.app.data.remote.dto.PatchRequest
+import com.wmt.app.data.remote.dto.PausePreviewDto
+import com.wmt.app.data.remote.dto.PauseTaskRequest
+import com.wmt.app.data.remote.dto.TaskClockDto
 import com.wmt.app.data.remote.dto.MyTasksResponse
 import com.wmt.app.data.remote.dto.ProjectDetailResponse
 import com.wmt.app.data.remote.dto.ProjectDto
 import com.wmt.app.data.remote.dto.ProjectResponse
+import com.wmt.app.data.remote.dto.AddTimeLogRequest
+import com.wmt.app.data.remote.dto.AmendTimeLogRequest
+import com.wmt.app.data.remote.dto.AmendmentResponse
+import com.wmt.app.data.remote.dto.ReviewAmendmentRequest
 import com.wmt.app.data.remote.dto.TaskDetailResponse
+import com.wmt.app.data.remote.dto.TimeLogDeletedResponse
+import com.wmt.app.data.remote.dto.TimeLogsResponse
 import com.wmt.app.data.remote.dto.TaskDto
 import com.wmt.app.data.remote.dto.TaskPatchResponse
 import com.wmt.app.data.remote.dto.TaskResponse
@@ -146,6 +155,73 @@ interface WmtApi {
         @Path("taskId") taskId: Int,
         @Body body: PatchRequest,
     ): TaskPatchResponse
+
+    // ---- The timesheet. Effort is normally the clock's own work, so this is read-only
+    // apart from removing an entry a person typed; changing a figure is a correction
+    // somebody decides, below.
+
+    @GET("api/tasks/{taskId}/time-logs")
+    suspend fun taskTimeLogs(@Path("taskId") taskId: Int): TimeLogsResponse
+
+    /** Refuses with 422 on an entry the clock wrote: those are corrected, not removed. */
+    @DELETE("api/time-logs/{timeLogId}")
+    suspend fun deleteTimeLog(@Path("timeLogId") timeLogId: Int): TimeLogDeletedResponse
+
+    /** Asks for an existing entry to say something else. */
+    @POST("api/time-logs/{timeLogId}/amendments")
+    suspend fun amendTimeLog(
+        @Path("timeLogId") timeLogId: Int,
+        @Body body: AmendTimeLogRequest,
+    ): AmendmentResponse
+
+    // Task-scoped, not log-scoped: there is no entry to hang it off yet.
+    @POST("api/tasks/{taskId}/time-log-amendments")
+    suspend fun addTimeLogEntry(
+        @Path("taskId") taskId: Int,
+        @Body body: AddTimeLogRequest,
+    ): AmendmentResponse
+
+    @POST("api/time-log-amendments/{amendmentId}/approve")
+    suspend fun approveAmendment(
+        @Path("amendmentId") amendmentId: Int,
+        @Body body: ReviewAmendmentRequest,
+    ): AmendmentResponse
+
+    @POST("api/time-log-amendments/{amendmentId}/reject")
+    suspend fun rejectAmendment(
+        @Path("amendmentId") amendmentId: Int,
+        @Body body: ReviewAmendmentRequest,
+    ): AmendmentResponse
+
+    // ---- The task clock. PATCH, not POST: these move a task between states rather
+    // than creating anything. Project-scoped only, because a standalone task has no
+    // project to hold the setting or to decide a later correction.
+
+    @PATCH("api/projects/{projectId}/tasks/{taskId}/start")
+    suspend fun startTaskClock(
+        @Path("projectId") projectId: Int,
+        @Path("taskId") taskId: Int,
+    ): TaskClockDto
+
+    /** What pausing now would record. Read before the dialog, never counted locally. */
+    @GET("api/projects/{projectId}/tasks/{taskId}/pause-preview")
+    suspend fun taskPausePreview(
+        @Path("projectId") projectId: Int,
+        @Path("taskId") taskId: Int,
+    ): PausePreviewDto
+
+    @PATCH("api/projects/{projectId}/tasks/{taskId}/pause")
+    suspend fun pauseTaskClock(
+        @Path("projectId") projectId: Int,
+        @Path("taskId") taskId: Int,
+        @Body body: PauseTaskRequest,
+    ): TaskClockDto
+
+    @PATCH("api/projects/{projectId}/tasks/{taskId}/resume")
+    suspend fun resumeTaskClock(
+        @Path("projectId") projectId: Int,
+        @Path("taskId") taskId: Int,
+    ): TaskClockDto
 
     @Multipart
     @POST("api/projects/{projectId}/tasks/{taskId}/comments")

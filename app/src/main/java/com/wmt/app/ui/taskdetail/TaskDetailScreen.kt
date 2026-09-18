@@ -94,6 +94,7 @@ import kotlinx.coroutines.launch
 @Composable
 fun TaskDetailScreen(
     onBack: () -> Unit,
+    onOpenTimesheet: ((taskId: Int) -> Unit)? = null,
     onOpenTask: (projectId: Int, taskId: Int) -> Unit = { _, _ -> },
     viewModel: TaskDetailViewModel = hiltViewModel(),
 ) {
@@ -136,6 +137,14 @@ fun TaskDetailScreen(
             delay(15_000)
             viewModel.poll()
         }
+    }
+
+    state.pausePreview?.let { preview ->
+        PauseClockDialog(
+            preview = preview,
+            onConfirm = viewModel::confirmPause,
+            onDismiss = viewModel::dismissPause,
+        )
     }
 
     val editing = state.detail
@@ -222,6 +231,11 @@ fun TaskDetailScreen(
                     onLoadMoreComments = viewModel::loadOlderComments,
                     onToggleSubtask = viewModel::toggleSubtask,
                     onOpenSubtask = onOpenTask,
+                    clockBusy = state.clockBusy,
+                    onStartClock = viewModel::startClock,
+                    onRequestPause = viewModel::requestPause,
+                    onResumeClock = viewModel::resumeClock,
+                    onOpenTimesheet = onOpenTimesheet?.let { open -> { open(viewModel.taskId) } },
                 )
             }
         }
@@ -245,6 +259,11 @@ private fun TaskDetailContent(
     onLoadMoreComments: () -> Unit,
     onToggleSubtask: (subtaskId: Int, done: Boolean) -> Unit,
     onOpenSubtask: (projectId: Int, taskId: Int) -> Unit,
+    clockBusy: Boolean,
+    onStartClock: () -> Unit,
+    onRequestPause: () -> Unit,
+    onResumeClock: () -> Unit,
+    onOpenTimesheet: (() -> Unit)? = null,
 ) {
     val task = detail.task
     val context = LocalContext.current
@@ -338,6 +357,18 @@ private fun TaskDetailContent(
                     )
                 }
             }
+        }
+
+        item(key = "clock") {
+            TaskClockStrip(
+                clock = detail.clock,
+                busy = clockBusy,
+                onStart = onStartClock,
+                onPause = onRequestPause,
+                onResume = onResumeClock,
+                onOpenTimesheet = onOpenTimesheet,
+                modifier = Modifier.padding(bottom = 4.dp),
+            )
         }
 
         item(key = "description") {

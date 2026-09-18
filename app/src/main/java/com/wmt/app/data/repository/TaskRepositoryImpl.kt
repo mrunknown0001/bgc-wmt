@@ -7,12 +7,20 @@ import com.wmt.app.data.local.db.toEntity
 import com.wmt.app.data.remote.AttachmentPartFactory
 import com.wmt.app.data.remote.api.WmtApi
 import com.wmt.app.data.remote.dto.CreateTaskRequest
+import com.wmt.app.data.remote.dto.AddTimeLogRequest
+import com.wmt.app.data.remote.dto.AmendTimeLogRequest
 import com.wmt.app.data.remote.dto.PatchRequest
+import com.wmt.app.data.remote.dto.ReviewAmendmentRequest
+import com.wmt.app.data.remote.dto.PauseTaskRequest
 import com.wmt.app.data.remote.dto.UpdateTaskRequest
 import com.wmt.app.data.remote.dto.toDomain
 import com.wmt.app.data.remote.safeApiCall
 import com.wmt.app.domain.model.Comment
+import com.wmt.app.domain.model.AmendmentOutcome
+import com.wmt.app.domain.model.PausePreview
+import com.wmt.app.domain.model.TaskTimesheet
 import com.wmt.app.domain.model.Task
+import com.wmt.app.domain.model.TaskClock
 import com.wmt.app.domain.model.TaskDetail
 import com.wmt.app.domain.repository.TaskRepository
 import com.wmt.app.util.Resource
@@ -65,6 +73,86 @@ class TaskRepositoryImpl @Inject constructor(
             }
             response.task.toDomain()
         }
+
+    override suspend fun startClock(
+        projectId: Int,
+        taskId: Int,
+        current: TaskClock,
+    ): Resource<TaskClock> = safeApiCall(moshi) {
+        api.startTaskClock(projectId, taskId).toDomain(current)
+    }
+
+    override suspend fun pausePreview(projectId: Int, taskId: Int): Resource<PausePreview> =
+        safeApiCall(moshi) { api.taskPausePreview(projectId, taskId).toDomain() }
+
+    override suspend fun pauseClock(
+        projectId: Int,
+        taskId: Int,
+        minutes: Int,
+        note: String?,
+        current: TaskClock,
+    ): Resource<TaskClock> = safeApiCall(moshi) {
+        api.pauseTaskClock(
+            projectId = projectId,
+            taskId = taskId,
+            body = PauseTaskRequest(minutes = minutes, note = note?.takeIf { it.isNotBlank() }),
+        ).toDomain(current)
+    }
+
+    override suspend fun resumeClock(
+        projectId: Int,
+        taskId: Int,
+        current: TaskClock,
+    ): Resource<TaskClock> = safeApiCall(moshi) {
+        api.resumeTaskClock(projectId, taskId).toDomain(current)
+    }
+
+    override suspend fun timesheet(taskId: Int): Resource<TaskTimesheet> =
+        safeApiCall(moshi) { api.taskTimeLogs(taskId).toDomain() }
+
+    override suspend fun deleteTimeLog(timeLogId: Int): Resource<Int> =
+        safeApiCall(moshi) { api.deleteTimeLog(timeLogId).totalMinutes }
+
+    override suspend fun amendTimeLog(
+        timeLogId: Int,
+        duration: String,
+        reason: String,
+    ): Resource<AmendmentOutcome> = safeApiCall(moshi) {
+        api.amendTimeLog(
+            timeLogId = timeLogId,
+            body = AmendTimeLogRequest(duration = duration.trim(), reason = reason.trim()),
+        ).toDomain()
+    }
+
+    override suspend fun addTimeLogEntry(
+        taskId: Int,
+        duration: String,
+        loggedOn: String,
+        reason: String,
+    ): Resource<AmendmentOutcome> = safeApiCall(moshi) {
+        api.addTimeLogEntry(
+            taskId = taskId,
+            body = AddTimeLogRequest(
+                duration = duration.trim(),
+                loggedOn = loggedOn,
+                reason = reason.trim(),
+            ),
+        ).toDomain()
+    }
+
+    override suspend fun decideAmendment(
+        amendmentId: Int,
+        approve: Boolean,
+        note: String?,
+    ): Resource<AmendmentOutcome> = safeApiCall(moshi) {
+        val body = ReviewAmendmentRequest(note = note?.takeIf { it.isNotBlank() })
+        val response = if (approve) {
+            api.approveAmendment(amendmentId, body)
+        } else {
+            api.rejectAmendment(amendmentId, body)
+        }
+        response.toDomain()
+    }
 
     override suspend fun addComment(
         projectId: Int,

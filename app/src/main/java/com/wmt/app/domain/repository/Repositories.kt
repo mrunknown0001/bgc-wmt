@@ -11,6 +11,10 @@ import com.wmt.app.domain.model.ApprovalRequestDetail
 import com.wmt.app.domain.model.ApprovalRequestForm
 import com.wmt.app.domain.model.ApprovalTrailEntry
 import com.wmt.app.domain.model.Comment
+import com.wmt.app.domain.model.AmendmentOutcome
+import com.wmt.app.domain.model.PausePreview
+import com.wmt.app.domain.model.TaskTimesheet
+import com.wmt.app.domain.model.TaskClock
 import com.wmt.app.domain.model.MyApprovals
 import com.wmt.app.domain.model.MyRequests
 import com.wmt.app.domain.model.Page
@@ -80,6 +84,65 @@ interface TaskRepository {
     fun myTasks(): Flow<Resource<List<Task>>>
     suspend fun taskDetail(projectId: Int, taskId: Int): Resource<TaskDetail>
     suspend fun updateStatus(projectId: Int, taskId: Int, status: String): Resource<Task>
+
+    /*
+     * The task clock. Each call answers with only the part it changed, so [current] is
+     * merged with the reply rather than replaced by it -- the project switch that
+     * decided the clock was shown at all is not repeated in these payloads.
+     *
+     * Project-scoped only: a standalone task has no project to hold the setting.
+     */
+
+    /** Starts the clock, which also moves the task to in progress. */
+    suspend fun startClock(projectId: Int, taskId: Int, current: TaskClock): Resource<TaskClock>
+
+    /** What pausing now would record, asked before offering the dialog. */
+    suspend fun pausePreview(projectId: Int, taskId: Int): Resource<PausePreview>
+
+    /** Pauses and records [minutes] against the day. */
+    suspend fun pauseClock(
+        projectId: Int,
+        taskId: Int,
+        minutes: Int,
+        note: String? = null,
+        current: TaskClock,
+    ): Resource<TaskClock>
+
+    suspend fun resumeClock(projectId: Int, taskId: Int, current: TaskClock): Resource<TaskClock>
+
+    /*
+     * The timesheet. Read-only apart from removing an entry somebody typed: a figure the
+     * clock worked out is changed by asking, not by editing.
+     */
+
+    suspend fun timesheet(taskId: Int): Resource<TaskTimesheet>
+
+    /** Refused on an entry the clock wrote; ask for a correction instead. */
+    suspend fun deleteTimeLog(timeLogId: Int): Resource<Int>
+
+    /**
+     * Asks for an entry to say something else. [duration] is sent as typed -- the server
+     * reads "1.5", "1:30" and "90m" alike, and parsing it here would only lose detail.
+     */
+    suspend fun amendTimeLog(
+        timeLogId: Int,
+        duration: String,
+        reason: String,
+    ): Resource<AmendmentOutcome>
+
+    /** Asks for an entry on a day with none. [loggedOn] is yyyy-MM-dd and cannot be future. */
+    suspend fun addTimeLogEntry(
+        taskId: Int,
+        duration: String,
+        loggedOn: String,
+        reason: String,
+    ): Resource<AmendmentOutcome>
+
+    suspend fun decideAmendment(
+        amendmentId: Int,
+        approve: Boolean,
+        note: String? = null,
+    ): Resource<AmendmentOutcome>
     /** Posts a comment with optional file attachments (content-resolver URIs as strings). */
     suspend fun addComment(
         projectId: Int,

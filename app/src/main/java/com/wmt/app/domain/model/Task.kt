@@ -82,4 +82,6 @@ data class TaskDetail(
     /** Users who can be @mentioned in comments (project members + owner). */
     val members: List<UserSummary> = emptyList(),
     val subtasks: List<Task> = emptyList(),
+    /** The task clock, and whether this project shows one at all. */
+    val clock: TaskClock = TaskClock(),
 )
