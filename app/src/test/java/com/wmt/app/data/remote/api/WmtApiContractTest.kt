@@ -1,0 +1,257 @@
+package com.wmt.app.data.remote.api
+
+import com.squareup.moshi.Moshi
+import com.wmt.app.data.remote.AttachmentPartFactory
+import com.wmt.app.data.remote.dto.ApprovalAdvanceRequest
+import com.wmt.app.data.remote.dto.UpdateApprovalItemRequest
+import kotlinx.coroutines.test.runTest
+import okhttp3.Interceptor
+import okhttp3.MediaType.Companion.toMediaType
+import okhttp3.OkHttpClient
+import okhttp3.Protocol
+import okhttp3.Request
+import okhttp3.Response
+import okhttp3.ResponseBody.Companion.toResponseBody
+import okio.Buffer
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
+import org.junit.Before
+import org.junit.Test
+import retrofit2.Retrofit
+import retrofit2.converter.moshi.MoshiConverterFactory
+
+/**
+ * Checks the shape of the requests [WmtApi] actually sends.
+ *
+ * Retrofit resolves its annotations when a method is first called, not at compile time,
+ * so a wrong path, verb or part name compiles cleanly and fails only on a device. Here
+ * the interface is built with validateEagerly, which forces every declaration (and its
+ * converter) to resolve up front, and each call is answered by an interceptor that
+ * records the request instead of sending it. The paths asserted below are the ones in
+ * the deployed routes/api.php.
+ */
+class WmtApiContractTest {
+
+    private val sent = mutableListOf<Request>()
+    private lateinit var api: WmtApi
+
+    @Before
+    fun setUp() {
+        val recorder = Interceptor { chain ->
+            val request = chain.request()
+            sent += request
+            Response.Builder()
+                .request(request)
+                .protocol(Protocol.HTTP_1_1)
+                .code(200)
+                .message("OK")
+                // Every response DTO these calls decode into defaults fully, so an empty
+                // object is enough to get past conversion.
+                .body("{}".toResponseBody("application/json".toMediaType()))
+                .build()
+        }
+
+        api = Retrofit.Builder()
+            .baseUrl(BASE)
+            .client(OkHttpClient.Builder().addInterceptor(recorder).build())
+            .addConverterFactory(MoshiConverterFactory.create(Moshi.Builder().build()))
+            // Resolves all 60-odd declarations now, converters included.
+            .validateEagerly(true)
+            .build()
+            .create(WmtApi::class.java)
+    }
+
+    private val last: Request get() = sent.last()
+
+    private fun assertSent(method: String, pathAndQuery: String) {
+        assertEquals(method, last.method)
+        assertEquals(BASE.dropLast(1) + pathAndQuery, last.url.toString())
+    }
+
+    /** The multipart body, read back as text so part names can be asserted. */
+    private fun lastBodyText(): String {
+        val buffer = Buffer()
+        last.body?.writeTo(buffer)
+        return buffer.readUtf8()
+    }
+
+    @Test
+    fun `building the interface resolves every declaration`() {
+        // setUp already called create() with validateEagerly; reaching here means every
+        // method annotation and return-type converter resolved.
+        assertTrue(sent.isEmpty())
+    }
+
+    @Test
+    fun `token refresh posts to the route that mints a replacement`() = runTest {
+        api.refreshToken()
+
+        assertSent("POST", "/api/token/refresh")
+    }
+
+    @Test
+    fun `the badge count is a plain get`() = runTest {
+        api.approvalCounts()
+
+        assertSent("GET", "/api/approvals/counts")
+    }
+
+    @Test
+    fun `queue and trail carry their filters as query parameters`() = runTest {
+        api.myApprovals(page = 2, search = "petty")
+        assertSent("GET", "/api/my-approvals?page=2&search=petty")
+
+        api.approvalTrail(page = 1, decision = "approved", projectId = 4, search = "cash")
+        assertSent("GET", "/api/my-approvals/trail?page=1&decision=approved&project_id=4&search=cash")
+
+        api.myRequests(page = 3, status = "changes_requested", projectId = 7)
+        assertSent("GET", "/api/my-requests?page=3&status=changes_requested&approval_project_id=7")
+    }
+
+    @Test
+    fun `omitted filters are left out of the query entirely`() = runTest {
+        api.myApprovals(page = 1)
+
+        assertSent("GET", "/api/my-approvals?page=1")
+        assertNull("a null search must not become an empty parameter", last.url.queryParameter("search"))
+    }
+
+
+    @Test
+    fun `project reads hit the read-only routes, with available before the wildcard`() = runTest {
+        api.approvalProjects(page = 1)
+        assertSent("GET", "/api/approval-projects?page=1")
+
+        // Distinct path, not an id: the server registers it ahead of {approvalProject}.
+        api.availableApprovalProjects()
+        assertSent("GET", "/api/approval-projects/available")
+
+        api.approvalProject(4)
+        assertSent("GET", "/api/approval-projects/4")
+
+        api.approvalRequestForm(4)
+        assertSent("GET", "/api/approval-projects/4/request-form")
+    }
+
+    @Test
+    fun `archived is sent only when asked for`() = runTest {
+        api.approvalProjects(page = 1, archived = true)
+        assertEquals("true", last.url.queryParameter("archived"))
+
+        api.approvalProjects(page = 1, archived = null)
+        assertNull("the default list must not pin archived=false", last.url.queryParameter("archived"))
+    }
+
+    @Test
+    fun `item reads and the section filter nest under the project`() = runTest {
+        api.approvalItems(projectId = 4, page = 1, status = "pending", sectionId = "none")
+        assertSent("GET", "/api/approval-projects/4/items?page=1&status=pending&section_id=none")
+
+        api.approvalItem(projectId = 4, itemId = 12)
+        assertSent("GET", "/api/approval-projects/4/items/12")
+
+        api.approvalItemComments(projectId = 4, itemId = 12, page = 2)
+        assertSent("GET", "/api/approval-projects/4/items/12/comments?page=2")
+    }
+
+    @Test
+    fun `the decision posts action and comment to advance`() = runTest {
+        api.advanceApprovalItem(
+            projectId = 4,
+            itemId = 12,
+            body = ApprovalAdvanceRequest(action = "rejected", comment = "Needs a quote"),
+        )
+
+        assertSent("POST", "/api/approval-projects/4/items/12/advance")
+        val body = lastBodyText()
+        assertTrue(body, body.contains("\"action\":\"rejected\""))
+        assertTrue(body, body.contains("\"comment\":\"Needs a quote\""))
+    }
+
+    @Test
+    fun `resubmit and cancel use the verbs the routes expose`() = runTest {
+        api.resubmitApprovalItem(projectId = 4, itemId = 12)
+        assertSent("POST", "/api/approval-projects/4/items/12/resubmit")
+
+        api.cancelApprovalItem(projectId = 4, itemId = 12)
+        assertSent("DELETE", "/api/approval-projects/4/items/12")
+    }
+
+    @Test
+    fun `updating a request puts json with field values keyed by field id`() = runTest {
+        api.updateApprovalItem(
+            projectId = 4,
+            itemId = 12,
+            body = UpdateApprovalItemRequest(
+                title = "Petty cash",
+                description = null,
+                customFieldValues = mapOf("20" to "1250.5"),
+            ),
+        )
+
+        assertSent("PUT", "/api/approval-projects/4/items/12")
+        val body = lastBodyText()
+        assertTrue(body, body.contains("\"customFieldValues\":{\"20\":\"1250.5\"}"))
+    }
+
+    @Test
+    fun `creating a request sends multipart parts under the names the server reads`() = runTest {
+        api.createApprovalItem(
+            projectId = 4,
+            title = textPart("Petty cash"),
+            description = textPart("For the site office"),
+            sectionId = textPart("8"),
+            customFieldValues = mapOf("customFieldValues[20]" to textPart("1250.5")),
+            attachments = emptyList(),
+        )
+
+        assertSent("POST", "/api/approval-projects/4/items")
+        assertTrue(last.body?.contentType()?.type == "multipart")
+        val body = lastBodyText()
+        assertTrue(body, body.contains("name=\"title\""))
+        assertTrue(body, body.contains("name=\"description\""))
+        assertTrue(body, body.contains("name=\"approval_section_id\""))
+        // The bracketed key is what Laravel reads back as customFieldValues.20.
+        assertTrue(body, body.contains("name=\"customFieldValues[20]\""))
+        assertTrue(body, body.contains("Petty cash"))
+    }
+
+    @Test
+    fun `an optional multipart part is omitted rather than sent empty`() = runTest {
+        api.createApprovalItem(
+            projectId = 4,
+            title = textPart("No section"),
+            description = null,
+            sectionId = null,
+            customFieldValues = emptyMap(),
+            attachments = emptyList(),
+        )
+
+        val body = lastBodyText()
+        assertTrue(body, body.contains("name=\"title\""))
+        assertTrue("a null section must not be sent", !body.contains("approval_section_id"))
+        assertTrue("a null description must not be sent", !body.contains("name=\"description\""))
+    }
+
+    @Test
+    fun `a comment posts its body as a multipart field`() = runTest {
+        api.addApprovalItemComment(
+            projectId = 4,
+            itemId = 12,
+            body = textPart("Looks fine"),
+            attachments = emptyList(),
+        )
+
+        assertSent("POST", "/api/approval-projects/4/items/12/comments")
+        val body = lastBodyText()
+        assertTrue(body, body.contains("name=\"body\""))
+        assertTrue(body, body.contains("Looks fine"))
+    }
+
+    private fun textPart(value: String) = AttachmentPartFactory.textPart(value)
+
+    companion object {
+        private const val BASE = "https://wmt-dev.bfcgroup.ph/"
+    }
+}

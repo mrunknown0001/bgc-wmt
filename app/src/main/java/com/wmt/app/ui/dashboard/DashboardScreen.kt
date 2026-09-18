@@ -21,7 +21,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Notifications
-import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.rounded.Checklist
 import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material3.Badge
@@ -52,8 +51,10 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.wmt.app.domain.model.DashboardStats
 import com.wmt.app.domain.model.Project
 import com.wmt.app.domain.model.Task
+import com.wmt.app.domain.model.UserSummary
 import com.wmt.app.ui.components.ErrorView
 import com.wmt.app.ui.components.OfflineBanner
+import com.wmt.app.ui.components.ProfileAvatarAction
 import com.wmt.app.ui.components.SkeletonList
 import com.wmt.app.ui.components.TaskListItem
 import com.wmt.app.ui.components.ThinDivider
@@ -75,6 +76,7 @@ fun DashboardScreen(
     onOpenSearch: () -> Unit = {},
     onOpenTodos: () -> Unit = {},
     unreadCount: Int = 0,
+    currentUser: UserSummary? = null,
     viewModel: DashboardViewModel = hiltViewModel(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
@@ -105,9 +107,7 @@ fun DashboardScreen(
                             Icon(Icons.Default.Notifications, contentDescription = "Notifications")
                         }
                     }
-                    IconButton(onClick = onOpenProfile) {
-                        Icon(Icons.Default.Person, contentDescription = "Profile")
-                    }
+                    ProfileAvatarAction(user = currentUser, onClick = onOpenProfile)
                 },
             )
         },

@@ -1,6 +1,19 @@
 package com.wmt.app.domain.repository
 
+import com.wmt.app.domain.model.ApprovalComment
+import com.wmt.app.domain.model.ApprovalCounts
+import com.wmt.app.domain.model.ApprovalDecisionResult
+import com.wmt.app.domain.model.ApprovalDecisionType
+import com.wmt.app.domain.model.ApprovalFieldInput
+import com.wmt.app.domain.model.ApprovalProjectSummary
+import com.wmt.app.domain.model.ApprovalRequest
+import com.wmt.app.domain.model.ApprovalRequestDetail
+import com.wmt.app.domain.model.ApprovalRequestForm
+import com.wmt.app.domain.model.ApprovalTrailEntry
 import com.wmt.app.domain.model.Comment
+import com.wmt.app.domain.model.MyApprovals
+import com.wmt.app.domain.model.MyRequests
+import com.wmt.app.domain.model.Page
 import com.wmt.app.domain.model.DashboardData
 import com.wmt.app.domain.model.Notification
 import com.wmt.app.domain.model.PersonalTodo
@@ -45,6 +58,15 @@ interface AuthRepository {
      * Requires the current [password] because the backend re-confirms the user.
      */
     suspend fun logoutOtherDevices(password: String): Resource<String>
+    /** Epoch millis at which the current token lapses; null when the server did not say. */
+    val tokenExpiresAt: Flow<Long?>
+
+    /**
+     * Swaps the live token for a freshly minted one. The server deletes the old token as
+     * soon as it answers, so a success must be persisted before the next request goes out.
+     */
+    suspend fun refreshToken(): Resource<Unit>
+
     /** Registers the current FCM token with the backend. */
     suspend fun registerDeviceToken(token: String): Resource<Unit>
 }
@@ -148,4 +170,105 @@ interface TodoRepository {
     suspend fun renameTodo(id: Int, title: String): Resource<PersonalTodo>
     suspend fun deleteTodo(id: Int): Resource<Unit>
     suspend fun clearCompleted(): Resource<Unit>
+}
+
+/**
+ * Approvals: the approver queue, the requestor's own submissions, and the lifecycle of a
+ * request. Approval projects are read-only here — configuring one stays on the web.
+ *
+ * Every list is server-paginated, so callers pass a page and append the result.
+ */
+interface ApprovalRepository {
+    /** The two badge numbers. Deliberately cheap: safe to call on every foreground. */
+    suspend fun counts(): Resource<ApprovalCounts>
+
+    /** Requests awaiting this user's decision. */
+    suspend fun myApprovals(page: Int = 1, search: String? = null): Resource<MyApprovals>
+
+    /** Decisions this user has recorded, newest first. */
+    suspend fun trail(
+        page: Int = 1,
+        decision: String? = null,
+        projectId: Int? = null,
+        search: String? = null,
+    ): Resource<Page<ApprovalTrailEntry>>
+
+    /** This user own submissions, with the per-status counters the filters use. */
+    suspend fun myRequests(
+        page: Int = 1,
+        status: String? = null,
+        projectId: Int? = null,
+        search: String? = null,
+    ): Resource<MyRequests>
+
+    suspend fun projects(
+        page: Int = 1,
+        search: String? = null,
+        archived: Boolean = false,
+    ): Resource<Page<ApprovalProjectSummary>>
+
+    /**
+     * Projects a request may be raised against. Separate from [projects] because a pure
+     * requestor is refused that list but may still submit, so the New Request flow
+     * starts here.
+     */
+    suspend fun availableProjects(): Resource<List<ApprovalProjectSummary>>
+
+    suspend fun projectRequests(
+        projectId: Int,
+        page: Int = 1,
+        search: String? = null,
+        status: String? = null,
+        /** A section id, or the literal "none" for unsectioned requests. */
+        sectionId: String? = null,
+        archived: Boolean = false,
+    ): Resource<Page<ApprovalRequest>>
+
+    /** Field definitions and sections the New Request screen renders itself from. */
+    suspend fun requestForm(projectId: Int): Resource<ApprovalRequestForm>
+
+    suspend fun request(projectId: Int, itemId: Int): Resource<ApprovalRequestDetail>
+
+    /**
+     * Raises a request. [fieldValues] is keyed by custom field id; [attachmentUris] are
+     * content URIs, capped at 5 by the server.
+     */
+    suspend fun createRequest(
+        projectId: Int,
+        title: String,
+        description: String? = null,
+        sectionId: Int? = null,
+        fieldValues: Map<Int, ApprovalFieldInput> = emptyMap(),
+        attachmentUris: List<String> = emptyList(),
+    ): Resource<ApprovalRequest>
+
+    suspend fun updateRequest(
+        projectId: Int,
+        itemId: Int,
+        title: String,
+        description: String? = null,
+        fieldValues: Map<Int, ApprovalFieldInput> = emptyMap(),
+    ): Resource<ApprovalRequest>
+
+    /** Records the decision on the active step. */
+    suspend fun decide(
+        projectId: Int,
+        itemId: Int,
+        decision: ApprovalDecisionType,
+        comment: String? = null,
+    ): Resource<ApprovalDecisionResult>
+
+    /** Sends a returned request back out to its chain. */
+    suspend fun resubmit(projectId: Int, itemId: Int): Resource<ApprovalRequest>
+
+    suspend fun cancelRequest(projectId: Int, itemId: Int): Resource<Unit>
+
+    suspend fun comments(projectId: Int, itemId: Int, page: Int = 1): Resource<Page<ApprovalComment>>
+
+    suspend fun addComment(
+        projectId: Int,
+        itemId: Int,
+        body: String,
+        attachmentUris: List<String> = emptyList(),
+    ): Resource<ApprovalComment>
 }

@@ -14,6 +14,7 @@ import com.wmt.app.data.remote.dto.UserDto
 import com.wmt.app.data.remote.dto.toDomain
 import com.wmt.app.domain.model.User
 import com.wmt.app.util.Constants
+import com.wmt.app.util.DateUtils
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -58,8 +59,14 @@ class PreferencesManager @Inject constructor(
     private val userAdapter = moshi.adapter(UserDto::class.java)
 
     private val _token = MutableStateFlow(securePrefs.getString(TOKEN_KEY, null))
+    private val _tokenExpiresAt = MutableStateFlow(
+        securePrefs.getLong(TOKEN_EXPIRES_AT_KEY, 0L).takeIf { it > 0L },
+    )
     val token: Flow<String?> = _token.asStateFlow()
     val isLoggedIn: Flow<Boolean> = _token.map { !it.isNullOrBlank() }
+
+    /** Epoch millis at which the stored token lapses; null when the server did not say. */
+    val tokenExpiresAt: Flow<Long?> = _tokenExpiresAt.asStateFlow()
 
     private val prefs: Flow<androidx.datastore.preferences.core.Preferences> =
         context.dataStore.data.catch { e ->
@@ -108,15 +115,28 @@ class PreferencesManager @Inject constructor(
         sessionManager.serverUrl = null
     }
 
-    fun saveToken(token: String) {
-        securePrefs.edit().putString(TOKEN_KEY, token).apply()
+    /**
+     * Stores a freshly issued token and the expiry that came with it. Written together
+     * so a rotated token can never be paired with the previous token's deadline.
+     */
+    fun saveToken(token: String, expiresAtIso: String? = null) {
+        val expiresAtMillis = DateUtils.parseInstant(expiresAtIso)?.toEpochMilli()
+        val editor = securePrefs.edit().putString(TOKEN_KEY, token)
+        if (expiresAtMillis != null) {
+            editor.putLong(TOKEN_EXPIRES_AT_KEY, expiresAtMillis)
+        } else {
+            editor.remove(TOKEN_EXPIRES_AT_KEY)
+        }
+        editor.apply()
         _token.value = token
+        _tokenExpiresAt.value = expiresAtMillis
         sessionManager.token = token
     }
 
     fun clearToken() {
-        securePrefs.edit().remove(TOKEN_KEY).apply()
+        securePrefs.edit().remove(TOKEN_KEY).remove(TOKEN_EXPIRES_AT_KEY).apply()
         _token.value = null
+        _tokenExpiresAt.value = null
         sessionManager.token = null
     }
 
@@ -147,5 +167,6 @@ class PreferencesManager @Inject constructor(
 
     companion object {
         private const val TOKEN_KEY = "auth_token"
+        private const val TOKEN_EXPIRES_AT_KEY = "auth_token_expires_at"
     }
 }

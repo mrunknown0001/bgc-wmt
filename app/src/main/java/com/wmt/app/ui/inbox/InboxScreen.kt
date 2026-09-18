@@ -56,12 +56,14 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.wmt.app.domain.model.Notification
+import com.wmt.app.domain.model.UserSummary
 import kotlinx.coroutines.delay
 import com.wmt.app.ui.components.EmptyState
 import com.wmt.app.ui.components.ErrorView
 import com.wmt.app.ui.components.OfflineBanner
 import com.wmt.app.ui.components.SkeletonList
 import com.wmt.app.ui.components.ThinDivider
+import com.wmt.app.ui.components.ProfileAvatarAction
 import com.wmt.app.ui.components.WmtTopAppBar
 import com.wmt.app.util.DateUtils
 
@@ -69,6 +71,8 @@ import com.wmt.app.util.DateUtils
 @Composable
 fun InboxScreen(
     onNotificationClick: (projectId: Int?, taskId: Int?) -> Unit,
+    currentUser: UserSummary? = null,
+    onOpenProfile: () -> Unit = {},
     viewModel: InboxViewModel = hiltViewModel(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
@@ -92,6 +96,7 @@ fun InboxScreen(
                     TextButton(onClick = viewModel::markAllRead) {
                         Text("Mark All Read")
                     }
+                    ProfileAvatarAction(user = currentUser, onClick = onOpenProfile)
                 },
             )
         },

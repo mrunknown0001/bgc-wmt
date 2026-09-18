@@ -49,6 +49,8 @@ data class MyTasksUiState(
     val createError: String? = null,
     /** Month tasks from /api/calendar (assigned + collaborating); null until fetched. */
     val calendarTasks: List<Task>? = null,
+    /** One-shot message for a rejected inline action; shown once, then cleared. */
+    val actionMessage: String? = null,
     /** Increments each time the user completes a task — drives the confetti burst. */
     val celebrations: Int = 0,
 ) {
@@ -165,22 +167,41 @@ class MyTasksViewModel @Inject constructor(
         }
     }
 
-    /** Tap-to-complete from the list: flip the task's done state optimistically, then reconcile. */
+    /**
+     * Tap-to-complete from the list: flip the row at once so the list feels instant, then
+     * reconcile with the server. A rejected change (the API blocks some status moves, e.g.
+     * an unfinished dependency, and explains itself in the 422) is put back and reported in
+     * the server's own words — and the confetti waits until the write actually landed.
+     */
     fun toggleComplete(task: Task) {
         val newStatus = if (task.statusEnum == TaskStatus.DONE) TaskStatus.TO_DO else TaskStatus.DONE
+        val previousStatus = task.status
         _state.update { st ->
             val flipped = st.allTasks.map {
                 if (it.id == task.id) it.copy(status = newStatus.raw) else it
             }
-            st.withTasks(flipped).copy(
-                celebrations = st.celebrations + if (newStatus == TaskStatus.DONE) 1 else 0,
-            )
+            st.withTasks(flipped)
         }
         viewModelScope.launch {
-            repository.updateStatus(task.projectId, task.id, newStatus.raw)
-            load(isRefresh = true)
+            when (val result = repository.updateStatus(task.projectId, task.id, newStatus.raw)) {
+                is Resource.Success -> {
+                    if (newStatus == TaskStatus.DONE) {
+                        _state.update { it.copy(celebrations = it.celebrations + 1) }
+                    }
+                    load(isRefresh = true)
+                }
+                is Resource.Error -> _state.update { st ->
+                    val reverted = st.allTasks.map {
+                        if (it.id == task.id) it.copy(status = previousStatus) else it
+                    }
+                    st.withTasks(reverted).copy(actionMessage = result.error.message)
+                }
+                is Resource.Loading -> Unit
+            }
         }
     }
+
+    fun clearActionMessage() = _state.update { it.copy(actionMessage = null) }
 
     private fun applyFilters(mutate: (MyTasksUiState) -> MyTasksUiState) {
         _state.update { mutate(it).let { st -> st.withTasks(st.allTasks) } }

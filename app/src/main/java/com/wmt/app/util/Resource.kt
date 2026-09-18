@@ -20,6 +20,14 @@ sealed class AppError(val message: String) {
     data object Unauthorized : AppError("Your session has expired. Please log in again.")
     data class Validation(val fieldErrors: Map<String, List<String>>, val summary: String) :
         AppError(summary)
+    /** 403 — the person genuinely may not do this; the detail is the server's own words. */
+    data class Forbidden(val detail: String) : AppError(detail)
+
+    /**
+     * 429 — the API throttled us. [retryAfterSeconds] is the `Retry-After` delta the
+     * server asked us to wait; callers back off on it instead of retrying immediately.
+     */
+    data class RateLimited(val detail: String, val retryAfterSeconds: Int?) : AppError(detail)
     data object Server : AppError("Something went wrong. Please try again.")
     data object NoConnection : AppError("No connection.")
     data object Timeout : AppError("Server not responding. Check your connection.")

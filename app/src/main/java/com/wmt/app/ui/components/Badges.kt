@@ -11,6 +11,8 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.wmt.app.domain.model.ApprovalStatus
+import com.wmt.app.domain.model.ApprovalStepStatus
 import com.wmt.app.domain.model.ProjectStatus
 import com.wmt.app.domain.model.TaskPriority
 import com.wmt.app.domain.model.TaskStatus
@@ -44,6 +46,18 @@ fun TaskStatusChip(status: TaskStatus, modifier: Modifier = Modifier) {
 
 @Composable
 fun ProjectStatusBadge(status: ProjectStatus, modifier: Modifier = Modifier) {
+    val colors = status.badgeColors()
+    Pill(status.label, colors.container, colors.content, modifier)
+}
+
+@Composable
+fun ApprovalStatusBadge(status: ApprovalStatus, modifier: Modifier = Modifier) {
+    val colors = status.badgeColors()
+    Pill(status.label, colors.container, colors.content, modifier)
+}
+
+@Composable
+fun ApprovalStepStatusBadge(status: ApprovalStepStatus, modifier: Modifier = Modifier) {
     val colors = status.badgeColors()
     Pill(status.label, colors.container, colors.content, modifier)
 }

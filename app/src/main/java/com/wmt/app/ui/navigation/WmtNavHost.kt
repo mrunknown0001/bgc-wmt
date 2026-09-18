@@ -41,6 +41,11 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.wmt.app.fcm.InAppMessage
+import com.wmt.app.ui.approvals.ApprovalDetailScreen
+import com.wmt.app.ui.approvals.ApprovalFormScreen
+import com.wmt.app.ui.approvals.ApprovalTrailScreen
+import com.wmt.app.ui.approvals.NewRequestProjectScreen
+import com.wmt.app.ui.approvals.ApprovalsScreen
 import com.wmt.app.ui.auth.LoginScreen
 import com.wmt.app.ui.auth.ServerSetupScreen
 import com.wmt.app.ui.dashboard.DashboardScreen
@@ -67,7 +72,7 @@ fun WmtApp(
         !state.hasServer -> ServerSetupScreen(onConnected = {})
         !state.isLoggedIn -> LoginScreen(onChangeServer = viewModel::changeServer)
         else -> MainScaffold(
-            unreadCount = state.unreadCount,
+            state = state,
             deepLinks = viewModel.deepLinks,
             intentDeepLinks = intentDeepLinks,
             inAppMessages = viewModel.inAppMessages,
@@ -85,7 +90,7 @@ private fun SplashScreen() {
 
 @Composable
 private fun MainScaffold(
-    unreadCount: Int,
+    state: RootUiState,
     deepLinks: Flow<DeepLink>,
     intentDeepLinks: Flow<DeepLink>,
     inAppMessages: Flow<InAppMessage>,
@@ -127,19 +132,19 @@ private fun MainScaffold(
         // inset itself. Zero the outer content insets so the top inset isn't added
         // twice (which left a gap above every screen's app bar).
         contentWindowInsets = WindowInsets(0, 0, 0, 0),
-        bottomBar = { WmtBottomBar(navController, unreadCount) },
+        bottomBar = { WmtBottomBar(navController, state) },
         snackbarHost = { SnackbarHost(snackbarHostState) },
     ) { padding ->
         MainNavHost(
             navController = navController,
-            unreadCount = unreadCount,
+            state = state,
             modifier = Modifier.padding(padding),
         )
     }
 }
 
 @Composable
-private fun WmtBottomBar(navController: NavHostController, unreadCount: Int) {
+private fun WmtBottomBar(navController: NavHostController, state: RootUiState) {
     val backStackEntry by navController.currentBackStackEntryAsState()
     val currentDestination = backStackEntry?.destination
 
@@ -152,7 +157,12 @@ private fun WmtBottomBar(navController: NavHostController, unreadCount: Int) {
             containerColor = MaterialTheme.colorScheme.surface,
             tonalElevation = 0.dp,
         ) {
-            BottomTab.entries.forEach { tab ->
+            // Approvals appears only for people the server says may use it, so the bar
+            // carries four items for everyone else rather than one that would 403 on tap.
+            val tabs = BottomTab.entries.filter {
+                it != BottomTab.APPROVALS || state.canUseApprovals
+            }
+            tabs.forEach { tab ->
                 val selected = currentDestination?.hierarchy?.any { it.route == tab.route } == true
                 NavigationBarItem(
                     selected = selected,
@@ -165,8 +175,15 @@ private fun WmtBottomBar(navController: NavHostController, unreadCount: Int) {
                     },
                     icon = {
                         val icon = if (selected) tab.selectedIcon else tab.icon
-                        if (tab == BottomTab.INBOX && unreadCount > 0) {
-                            BadgedBox(badge = { Badge { Text(unreadCount.coerceAtMost(99).toString()) } }) {
+                        val badgeCount = when (tab) {
+                            BottomTab.INBOX -> state.unreadCount
+                            // Both halves ask something of the person: a decision to
+                            // make, or a request of theirs that came back.
+                            BottomTab.APPROVALS -> state.approvalCounts.total
+                            else -> 0
+                        }
+                        if (badgeCount > 0) {
+                            BadgedBox(badge = { Badge { Text(badgeCount.coerceAtMost(99).toString()) } }) {
                                 Icon(icon, contentDescription = tab.label)
                             }
                         } else {
@@ -195,9 +212,13 @@ private fun WmtBottomBar(navController: NavHostController, unreadCount: Int) {
 @Composable
 private fun MainNavHost(
     navController: NavHostController,
-    unreadCount: Int,
+    state: RootUiState,
     modifier: Modifier = Modifier,
 ) {
+    // Profile left the navigation bar when Approvals took the fifth slot, so it is
+    // pushed from the top-bar avatar like any other detail screen.
+    val openProfile: () -> Unit = { navController.navigate(MainRoutes.PROFILE) }
+
     NavHost(
         navController = navController,
         startDestination = MainRoutes.DASHBOARD,
@@ -227,10 +248,11 @@ private fun MainNavHost(
                 onOpenMyTasks = { openTab(MainRoutes.MY_TASKS) },
                 onOpenProjects = { openTab(MainRoutes.PROJECTS) },
                 onOpenInbox = { openTab(MainRoutes.INBOX) },
-                onOpenProfile = { openTab(MainRoutes.PROFILE) },
+                onOpenProfile = openProfile,
                 onOpenSearch = { navController.navigate(MainRoutes.SEARCH) },
                 onOpenTodos = { navController.navigate(MainRoutes.TODOS) },
-                unreadCount = unreadCount,
+                unreadCount = state.unreadCount,
+                currentUser = state.currentUser,
             )
         }
         composable(MainRoutes.SEARCH) {
@@ -246,15 +268,21 @@ private fun MainNavHost(
         composable(MainRoutes.MY_TASKS) {
             MyTasksScreen(
                 onTaskClick = { p, t -> navController.navigate(MainRoutes.taskDetail(p, t)) },
+                currentUser = state.currentUser,
+                onOpenProfile = openProfile,
             )
         }
         composable(MainRoutes.PROJECTS) {
             ProjectsScreen(
                 onProjectClick = { navController.navigate(MainRoutes.projectDetail(it)) },
+                currentUser = state.currentUser,
+                onOpenProfile = openProfile,
             )
         }
         composable(MainRoutes.INBOX) {
             InboxScreen(
+                currentUser = state.currentUser,
+                onOpenProfile = openProfile,
                 onNotificationClick = { projectId, taskId ->
                     when {
                         projectId != null && taskId != null ->
@@ -265,8 +293,71 @@ private fun MainNavHost(
                 },
             )
         }
+        composable(MainRoutes.APPROVALS) {
+            ApprovalsScreen(
+                currentUser = state.currentUser,
+                onOpenProfile = openProfile,
+                onRequestClick = { projectId, requestId ->
+                    navController.navigate(MainRoutes.approvalDetail(projectId, requestId))
+                },
+                onNewRequest = { navController.navigate(MainRoutes.APPROVAL_NEW) },
+                onOpenTrail = { navController.navigate(MainRoutes.APPROVAL_TRAIL) },
+            )
+        }
+        composable(
+            route = MainRoutes.APPROVAL_DETAIL,
+            arguments = listOf(
+                navArgument("projectId") { type = NavType.IntType },
+                navArgument("requestId") { type = NavType.IntType },
+            ),
+        ) {
+            ApprovalDetailScreen(
+                onBack = { navController.popBackStack() },
+                onEdit = { projectId, requestId ->
+                    navController.navigate(MainRoutes.approvalForm(projectId, requestId))
+                },
+            )
+        }
+        composable(MainRoutes.APPROVAL_TRAIL) {
+            ApprovalTrailScreen(
+                onBack = { navController.popBackStack() },
+                onEntryClick = { projectId, requestId ->
+                    navController.navigate(MainRoutes.approvalDetail(projectId, requestId))
+                },
+            )
+        }
+        composable(MainRoutes.APPROVAL_NEW) {
+            NewRequestProjectScreen(
+                onBack = { navController.popBackStack() },
+                onProjectChosen = { projectId ->
+                    navController.navigate(MainRoutes.approvalForm(projectId))
+                },
+            )
+        }
+        composable(
+            route = MainRoutes.APPROVAL_FORM,
+            arguments = listOf(
+                navArgument("projectId") { type = NavType.IntType },
+                navArgument("requestId") {
+                    type = NavType.IntType
+                    defaultValue = 0
+                },
+            ),
+        ) {
+            ApprovalFormScreen(
+                onBack = { navController.popBackStack() },
+                // Back past the picker too, so submitting does not land on it again.
+                onSaved = {
+                    navController.popBackStack(MainRoutes.APPROVALS, inclusive = false)
+                },
+            )
+        }
         composable(MainRoutes.PROFILE) {
-            ProfileScreen(onChangeServer = {}, onLoggedOut = {})
+            ProfileScreen(
+                onChangeServer = {},
+                onLoggedOut = {},
+                onBack = { navController.popBackStack() },
+            )
         }
 
         composable(

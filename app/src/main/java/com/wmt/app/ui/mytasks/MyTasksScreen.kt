@@ -30,6 +30,8 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBarDefaults
@@ -49,11 +51,13 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.wmt.app.domain.model.TaskPriority
+import com.wmt.app.domain.model.UserSummary
 import com.wmt.app.domain.model.TaskStatus
 import com.wmt.app.ui.components.ConfettiEffect
 import com.wmt.app.ui.components.EmptyState
 import com.wmt.app.ui.components.ErrorView
 import com.wmt.app.ui.components.OfflineBanner
+import com.wmt.app.ui.components.ProfileAvatarAction
 import com.wmt.app.ui.components.SectionHeader
 import com.wmt.app.ui.components.SkeletonList
 import com.wmt.app.ui.components.TaskListItem
@@ -65,6 +69,8 @@ import com.wmt.app.ui.projects.AddTaskDialog
 @Composable
 fun MyTasksScreen(
     onTaskClick: (projectId: Int, taskId: Int) -> Unit,
+    currentUser: UserSummary? = null,
+    onOpenProfile: () -> Unit = {},
     viewModel: MyTasksViewModel = hiltViewModel(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
@@ -76,6 +82,15 @@ fun MyTasksScreen(
     var calendarMode by remember { mutableStateOf(false) }
     var searchVisible by remember { mutableStateOf(false) }
     var showCreate by remember { mutableStateOf(false) }
+    val snackbarHostState = remember { SnackbarHostState() }
+
+    // A rejected inline action (e.g. a status change the server refuses) reports itself here.
+    state.actionMessage?.let { message ->
+        LaunchedEffect(message) {
+            snackbarHostState.showSnackbar(message)
+            viewModel.clearActionMessage()
+        }
+    }
 
     if (showCreate) {
         AddTaskDialog(
@@ -129,9 +144,11 @@ fun MyTasksScreen(
                             },
                         )
                     }
+                    ProfileAvatarAction(user = currentUser, onClick = onOpenProfile)
                 },
             )
         },
+        snackbarHost = { SnackbarHost(snackbarHostState) },
         floatingActionButton = {
             FloatingActionButton(
                 onClick = { showCreate = true },

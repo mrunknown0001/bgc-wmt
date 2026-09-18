@@ -20,6 +20,7 @@ import com.wmt.app.domain.model.TaskDetail
 import com.wmt.app.domain.model.TaskStatus
 import com.wmt.app.domain.model.Team
 import com.wmt.app.domain.model.User
+import com.wmt.app.domain.model.UserCapabilities
 import com.wmt.app.domain.model.UserSummary
 
 fun UserSummaryDto.toDomain() = UserSummary(id = id, name = name, avatarUrl = avatarUrl)
@@ -34,6 +35,20 @@ fun UserDto.toDomain() = User(
     department = department?.let { Department(it.id, it.name) },
     team = team?.let { Team(it.id, it.name) },
     roles = roles,
+    // Absent from a user cached before the app read these; treat the account as active
+    // and every capability as off rather than inventing permissions.
+    isActive = isActive ?: true,
+    capabilities = capabilities?.toDomain() ?: UserCapabilities(),
+)
+
+fun UserCapabilitiesDto.toDomain() = UserCapabilities(
+    canApprove = canApprove,
+    canRequest = canRequest,
+    canExpandUploads = canExpandUploads,
+    canCreateProject = canCreateProject,
+    canManageTasks = canManageTasks,
+    canManageProjects = canManageProjects,
+    canAccessApprovals = canAccessApprovals,
 )
 
 fun ProjectDto.toDomain() = Project(

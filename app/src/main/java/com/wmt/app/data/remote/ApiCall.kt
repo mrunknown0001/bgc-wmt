@@ -27,21 +27,39 @@ suspend fun <T> safeApiCall(
     Resource.Error(AppError.Unknown(e.message ?: "Unexpected error"))
 }
 
-private fun HttpException.toAppError(moshi: Moshi): AppError = when (code()) {
-    401 -> AppError.Unauthorized
-    422 -> parseValidation(moshi) ?: AppError.Unknown("Validation failed")
-    in 500..599 -> AppError.Server
-    else -> AppError.Unknown("Request failed (${code()})")
+private fun HttpException.toAppError(moshi: Moshi): AppError {
+    // The error body is a one-shot stream, so decode it before branching on the code.
+    val parsed = parseErrorBody(moshi)
+    return when (code()) {
+        401 -> AppError.Unauthorized
+        // A genuine "you may not do that" — never retried, and the server says why.
+        403 -> AppError.Forbidden(parsed?.message ?: "You don't have permission to do that.")
+        422 -> AppError.Validation(
+            fieldErrors = parsed?.errors.orEmpty(),
+            summary = parsed?.message
+                ?: parsed?.errors?.values?.firstOrNull()?.firstOrNull()
+                ?: "Validation failed",
+        )
+        429 -> AppError.RateLimited(
+            detail = parsed?.message ?: "Too many attempts. Please try again shortly.",
+            retryAfterSeconds = retryAfterSeconds(),
+        )
+        in 500..599 -> AppError.Server
+        else -> AppError.Unknown(parsed?.message ?: "Request failed (${code()})")
+    }
 }
 
-private fun HttpException.parseValidation(moshi: Moshi): AppError.Validation? = runCatching {
-    val raw = response()?.errorBody()?.string().orEmpty()
-    val dto = moshi.adapter(ValidationErrorDto::class.java).fromJson(raw)
-    val errors = dto?.errors.orEmpty()
-    AppError.Validation(
-        fieldErrors = errors,
-        summary = dto?.message
-            ?: errors.values.firstOrNull()?.firstOrNull()
-            ?: "Validation failed",
-    )
-}.getOrNull()
+/** Decodes both Laravel error shapes: `{message, errors}` (422) and plain `{message}`. */
+private fun HttpException.parseErrorBody(moshi: Moshi): ValidationErrorDto? {
+    val raw = runCatching { response()?.errorBody()?.string() }.getOrNull().orEmpty()
+    if (raw.isBlank()) return null
+    return runCatching { moshi.adapter(ValidationErrorDto::class.java).fromJson(raw) }.getOrNull()
+}
+
+/**
+ * Both throttles the API applies answer with `Retry-After` in delta-seconds — the
+ * route's per-IP limiter and the per-email+IP login lock. Callers wait this out
+ * rather than hammering.
+ */
+private fun HttpException.retryAfterSeconds(): Int? =
+    response()?.headers()?.get("Retry-After")?.trim()?.toIntOrNull()?.takeIf { it >= 0 }

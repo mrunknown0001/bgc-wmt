@@ -1,6 +1,23 @@
 package com.wmt.app.data.remote.api
 
 import com.wmt.app.data.remote.dto.ApiList
+import com.wmt.app.data.remote.dto.ApprovalAdvanceRequest
+import com.wmt.app.data.remote.dto.ApprovalAdvanceResponse
+import com.wmt.app.data.remote.dto.ApprovalCommentDto
+import com.wmt.app.data.remote.dto.ApprovalCommentResponse
+import com.wmt.app.data.remote.dto.ApprovalCountsDto
+import com.wmt.app.data.remote.dto.ApprovalItemDetailResponse
+import com.wmt.app.data.remote.dto.ApprovalItemDto
+import com.wmt.app.data.remote.dto.ApprovalItemResponse
+import com.wmt.app.data.remote.dto.ApprovalProjectDto
+import com.wmt.app.data.remote.dto.ApprovalProjectResponse
+import com.wmt.app.data.remote.dto.ApprovalRequestFormResponse
+import com.wmt.app.data.remote.dto.ApprovalTrailResponse
+import com.wmt.app.data.remote.dto.AvailableApprovalProjectsResponse
+import com.wmt.app.data.remote.dto.MyApprovalsResponse
+import com.wmt.app.data.remote.dto.MyRequestsResponse
+import com.wmt.app.data.remote.dto.Paginated
+import com.wmt.app.data.remote.dto.UpdateApprovalItemRequest
 import com.wmt.app.data.remote.dto.AppSettingsDto
 import com.wmt.app.data.remote.dto.CalendarResponse
 import com.wmt.app.data.remote.dto.ChangePasswordRequest
@@ -29,6 +46,7 @@ import com.wmt.app.data.remote.dto.TaskDetailResponse
 import com.wmt.app.data.remote.dto.TaskDto
 import com.wmt.app.data.remote.dto.TaskPatchResponse
 import com.wmt.app.data.remote.dto.TaskResponse
+import com.wmt.app.data.remote.dto.TokenRefreshResponse
 import com.wmt.app.data.remote.dto.UpdateTaskRequest
 import com.wmt.app.data.remote.dto.UnreadCountResponse
 import com.wmt.app.data.remote.dto.UserDto
@@ -43,6 +61,7 @@ import retrofit2.http.PATCH
 import retrofit2.http.POST
 import retrofit2.http.PUT
 import retrofit2.http.Part
+import retrofit2.http.PartMap
 import retrofit2.http.Path
 import retrofit2.http.Query
 import retrofit2.http.Url
@@ -67,6 +86,11 @@ interface WmtApi {
 
     @POST("api/logout-other-devices")
     suspend fun logoutOtherDevices(@Body body: LogoutOtherDevicesRequest): MessageResponse
+
+    // Mints a replacement and deletes the token that authorised the call, so the new
+    // one must be persisted before anything else fires a request.
+    @POST("api/token/refresh")
+    suspend fun refreshToken(): TokenRefreshResponse
 
     // Distinct path from the web SPA's /api/device-tokens (which sits behind web CSRF
     // middleware and rejects Bearer-only requests with 419). See routes/api.php.
@@ -227,4 +251,130 @@ interface WmtApi {
 
     @DELETE("api/personal-todos/clear-completed")
     suspend fun clearCompletedTodos(): SuccessResponse
+
+    // ---- Approvals ----
+    // Projects are read-only here: creating and configuring one stays on the web.
+
+    @GET("api/approvals/counts")
+    suspend fun approvalCounts(): ApprovalCountsDto
+
+    @GET("api/my-approvals")
+    suspend fun myApprovals(
+        @Query("page") page: Int? = null,
+        @Query("search") search: String? = null,
+    ): MyApprovalsResponse
+
+    @GET("api/my-approvals/trail")
+    suspend fun approvalTrail(
+        @Query("page") page: Int? = null,
+        @Query("decision") decision: String? = null,
+        @Query("project_id") projectId: Int? = null,
+        @Query("search") search: String? = null,
+    ): ApprovalTrailResponse
+
+    @GET("api/my-requests")
+    suspend fun myRequests(
+        @Query("page") page: Int? = null,
+        @Query("status") status: String? = null,
+        @Query("approval_project_id") projectId: Int? = null,
+        @Query("search") search: String? = null,
+    ): MyRequestsResponse
+
+    // Returns a bare Laravel paginator, not a wrapped envelope.
+    @GET("api/approval-projects")
+    suspend fun approvalProjects(
+        @Query("page") page: Int? = null,
+        @Query("search") search: String? = null,
+        @Query("archived") archived: Boolean? = null,
+    ): Paginated<ApprovalProjectDto>
+
+    // Projects this person may raise a request against. A pure requestor (can_request
+    // without approver access) is 403 on the list and show routes, so the New Request
+    // flow starts here rather than there.
+    @GET("api/approval-projects/available")
+    suspend fun availableApprovalProjects(): AvailableApprovalProjectsResponse
+
+    @GET("api/approval-projects/{projectId}")
+    suspend fun approvalProject(@Path("projectId") projectId: Int): ApprovalProjectResponse
+
+    /** Field definitions and sections the New Request screen renders itself from. */
+    @GET("api/approval-projects/{projectId}/request-form")
+    suspend fun approvalRequestForm(
+        @Path("projectId") projectId: Int,
+    ): ApprovalRequestFormResponse
+
+    @GET("api/approval-projects/{projectId}/items")
+    suspend fun approvalItems(
+        @Path("projectId") projectId: Int,
+        @Query("page") page: Int? = null,
+        @Query("search") search: String? = null,
+        @Query("status") status: String? = null,
+        // Either a section id or the literal "none" for unsectioned requests.
+        @Query("section_id") sectionId: String? = null,
+        @Query("archived") archived: Boolean? = null,
+    ): Paginated<ApprovalItemDto>
+
+    @GET("api/approval-projects/{projectId}/items/{itemId}")
+    suspend fun approvalItem(
+        @Path("projectId") projectId: Int,
+        @Path("itemId") itemId: Int,
+    ): ApprovalItemDetailResponse
+
+    // Multipart because a new request can carry up to 5 attachments. Custom field
+    // values go as customFieldValues[<fieldId>] parts, which is what the server reads.
+    @Multipart
+    @POST("api/approval-projects/{projectId}/items")
+    suspend fun createApprovalItem(
+        @Path("projectId") projectId: Int,
+        @Part("title") title: RequestBody,
+        @Part("description") description: RequestBody?,
+        @Part("approval_section_id") sectionId: RequestBody?,
+        @PartMap customFieldValues: Map<String, @JvmSuppressWildcards RequestBody>,
+        @Part attachments: List<MultipartBody.Part>,
+    ): ApprovalItemResponse
+
+    @PUT("api/approval-projects/{projectId}/items/{itemId}")
+    suspend fun updateApprovalItem(
+        @Path("projectId") projectId: Int,
+        @Path("itemId") itemId: Int,
+        @Body body: UpdateApprovalItemRequest,
+    ): ApprovalItemResponse
+
+    /** The decision itself: action is "approved" or "rejected". */
+    @POST("api/approval-projects/{projectId}/items/{itemId}/advance")
+    suspend fun advanceApprovalItem(
+        @Path("projectId") projectId: Int,
+        @Path("itemId") itemId: Int,
+        @Body body: ApprovalAdvanceRequest,
+    ): ApprovalAdvanceResponse
+
+    @POST("api/approval-projects/{projectId}/items/{itemId}/resubmit")
+    suspend fun resubmitApprovalItem(
+        @Path("projectId") projectId: Int,
+        @Path("itemId") itemId: Int,
+    ): ApprovalItemResponse
+
+    /** Cancels the request: a soft delete plus a workflow cancel, server-side. */
+    @DELETE("api/approval-projects/{projectId}/items/{itemId}")
+    suspend fun cancelApprovalItem(
+        @Path("projectId") projectId: Int,
+        @Path("itemId") itemId: Int,
+    ): SuccessResponse
+
+    // Oldest first, 30 to a page.
+    @GET("api/approval-projects/{projectId}/items/{itemId}/comments")
+    suspend fun approvalItemComments(
+        @Path("projectId") projectId: Int,
+        @Path("itemId") itemId: Int,
+        @Query("page") page: Int? = null,
+    ): Paginated<ApprovalCommentDto>
+
+    @Multipart
+    @POST("api/approval-projects/{projectId}/items/{itemId}/comments")
+    suspend fun addApprovalItemComment(
+        @Path("projectId") projectId: Int,
+        @Path("itemId") itemId: Int,
+        @Part("body") body: RequestBody,
+        @Part attachments: List<MultipartBody.Part>,
+    ): ApprovalCommentResponse
 }

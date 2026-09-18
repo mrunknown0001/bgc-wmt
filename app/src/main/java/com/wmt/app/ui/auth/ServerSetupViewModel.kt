@@ -2,7 +2,9 @@ package com.wmt.app.ui.auth
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.wmt.app.BuildConfig
 import com.wmt.app.domain.repository.SettingsRepository
+import com.wmt.app.util.Constants
 import com.wmt.app.util.Resource
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -24,7 +26,11 @@ class ServerSetupViewModel @Inject constructor(
     private val settingsRepository: SettingsRepository,
 ) : ViewModel() {
 
-    private val _state = MutableStateFlow(ServerSetupState())
+    // Dev builds land on staging already typed in; release builds start empty so nobody
+    // ships a phone pointed at the dev server.
+    private val _state = MutableStateFlow(
+        ServerSetupState(url = if (BuildConfig.DEBUG) Constants.STAGING_BASE_URL else ""),
+    )
     val state: StateFlow<ServerSetupState> = _state.asStateFlow()
 
     fun onUrlChange(value: String) {

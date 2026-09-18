@@ -13,6 +13,8 @@ data class LoginRequest(
 @JsonClass(generateAdapter = true)
 data class LoginResponse(
     @Json(name = "token") val token: String,
+    /** ISO-8601; null only if the server has no token expiry configured. */
+    @Json(name = "expires_at") val expiresAt: String? = null,
     @Json(name = "user") val user: UserDto,
 )
 
@@ -25,6 +27,8 @@ data class UserDto(
     @Json(name = "department") val department: NamedRefDto? = null,
     @Json(name = "team") val team: NamedRefDto? = null,
     @Json(name = "roles") val roles: List<String> = emptyList(),
+    @Json(name = "is_active") val isActive: Boolean? = null,
+    @Json(name = "capabilities") val capabilities: UserCapabilitiesDto? = null,
 )
 
 @JsonClass(generateAdapter = true)
@@ -49,4 +53,34 @@ data class ChangePasswordRequest(
 @JsonClass(generateAdapter = true)
 data class LogoutOtherDevicesRequest(
     @Json(name = "password") val password: String,
+)
+
+/** `POST /api/token/refresh` — a replacement token and its new expiry, no user payload. */
+@JsonClass(generateAdapter = true)
+data class TokenRefreshResponse(
+    @Json(name = "token") val token: String = "",
+    @Json(name = "expires_at") val expiresAt: String? = null,
+)
+
+/**
+ * What the signed-in person is allowed to do, decided by the server so the rule is not
+ * re-derived here. Gates the Approvals tab, its To Approve / My Requests split and the
+ * New Request button, among others.
+ *
+ * Absent from an older cached user payload, hence the defaults: everything off, which
+ * hides a feature rather than showing one that would then be refused.
+ */
+@JsonClass(generateAdapter = true)
+data class UserCapabilitiesDto(
+    @Json(name = "can_approve") val canApprove: Boolean = false,
+    @Json(name = "can_request") val canRequest: Boolean = false,
+    @Json(name = "can_expand_uploads") val canExpandUploads: Boolean = false,
+    @Json(name = "can_create_project") val canCreateProject: Boolean = false,
+    @Json(name = "can_manage_tasks") val canManageTasks: Boolean = false,
+    @Json(name = "can_manage_projects") val canManageProjects: Boolean = false,
+    /**
+     * Broader than [canApprove] on purpose: admins and executives reach approvals
+     * without it.
+     */
+    @Json(name = "can_access_approvals") val canAccessApprovals: Boolean = false,
 )

@@ -11,6 +11,7 @@ import com.wmt.app.data.remote.dto.toDomain
 import com.wmt.app.data.remote.safeApiCall
 import com.wmt.app.domain.model.User
 import com.wmt.app.domain.repository.AuthRepository
+import com.wmt.app.util.AppError
 import com.wmt.app.util.Constants
 import com.wmt.app.util.Resource
 import kotlinx.coroutines.flow.Flow
@@ -26,6 +27,7 @@ class AuthRepositoryImpl @Inject constructor(
 
     override val isLoggedIn: Flow<Boolean> = prefs.isLoggedIn
     override val currentUser: Flow<User?> = prefs.currentUser
+    override val tokenExpiresAt: Flow<Long?> = prefs.tokenExpiresAt
 
     override suspend fun login(email: String, password: String): Resource<User> {
         val result = safeApiCall(moshi) {
@@ -33,7 +35,7 @@ class AuthRepositoryImpl @Inject constructor(
         }
         return when (result) {
             is Resource.Success -> {
-                prefs.saveToken(result.data.token)
+                prefs.saveToken(result.data.token, result.data.expiresAt)
                 prefs.saveUser(result.data.user)
                 Resource.Success(result.data.user.toDomain())
             }
@@ -90,6 +92,26 @@ class AuthRepositoryImpl @Inject constructor(
             is Resource.Success -> Resource.Success(
                 result.data.message ?: "Signed out of other devices.",
             )
+            is Resource.Error -> Resource.Error(result.error)
+            is Resource.Loading -> Resource.Loading()
+        }
+    }
+
+    override suspend fun refreshToken(): Resource<Unit> {
+        val result = safeApiCall(moshi) { api.refreshToken() }
+        return when (result) {
+            is Resource.Success -> {
+                val fresh = result.data.token
+                if (fresh.isBlank()) {
+                    // Nothing usable came back. The old token is already gone server-side,
+                    // but reporting the failure beats storing a blank and forcing a logout
+                    // we cannot explain.
+                    Resource.Error(AppError.Unknown("Token refresh returned no token."))
+                } else {
+                    prefs.saveToken(fresh, result.data.expiresAt)
+                    Resource.Success(Unit)
+                }
+            }
             is Resource.Error -> Resource.Error(result.error)
             is Resource.Loading -> Resource.Loading()
         }

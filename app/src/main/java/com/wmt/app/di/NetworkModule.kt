@@ -5,6 +5,7 @@ import com.wmt.app.BuildConfig
 import com.wmt.app.data.remote.api.WmtApi
 import com.wmt.app.data.remote.interceptor.AuthInterceptor
 import com.wmt.app.data.remote.interceptor.BaseUrlInterceptor
+import com.wmt.app.data.remote.interceptor.MediaAuthInterceptor
 import com.wmt.app.util.Constants
 import dagger.Module
 import dagger.Provides
@@ -48,6 +49,25 @@ object NetworkModule {
             .writeTimeout(Constants.DEFAULT_WRITE_TIMEOUT, TimeUnit.SECONDS)
             .build()
     }
+
+    /**
+     * Client for images and attachment downloads. Shares the base-URL rewriting and the
+     * token, but not the body logging: printing an image response buffers the whole file
+     * to log bytes nobody reads. Its auth is host-scoped, so a URL pointing anywhere
+     * other than the configured server is fetched without the token.
+     */
+    @Provides
+    @Singleton
+    @MediaClient
+    fun provideMediaOkHttpClient(
+        baseUrlInterceptor: BaseUrlInterceptor,
+        mediaAuthInterceptor: MediaAuthInterceptor,
+    ): OkHttpClient = OkHttpClient.Builder()
+        .addInterceptor(baseUrlInterceptor)
+        .addInterceptor(mediaAuthInterceptor)
+        .connectTimeout(Constants.DEFAULT_CONNECT_TIMEOUT, TimeUnit.SECONDS)
+        .readTimeout(Constants.DEFAULT_READ_TIMEOUT, TimeUnit.SECONDS)
+        .build()
 
     @Provides
     @Singleton
