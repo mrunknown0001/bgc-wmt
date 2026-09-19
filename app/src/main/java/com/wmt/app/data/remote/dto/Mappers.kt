@@ -202,6 +202,8 @@ fun NotificationDto.toDomain(): Notification {
             type = d.type,
             taskId = d.taskId,
             projectId = d.projectId,
+            approvalProjectId = d.approvalProjectId,
+            approvalRequestId = d.approvalItemId ?: d.approvalRequestId,
         ),
         readAt = readAt,
         createdAt = createdAt,

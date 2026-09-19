@@ -6,7 +6,22 @@ data class NotificationData(
     val type: String,
     val taskId: Int?,
     val projectId: Int?,
-)
+    val approvalProjectId: Int? = null,
+    val approvalRequestId: Int? = null,
+) {
+    /**
+     * Where tapping this notification should land, resolved the same way a push is, so
+     * a message opens the same screen from the list as it does from the banner.
+     */
+    val target: NotificationTarget?
+        get() = NotificationTarget.resolve(
+            type = type,
+            projectId = projectId,
+            taskId = taskId,
+            approvalProjectId = approvalProjectId,
+            approvalRequestId = approvalRequestId,
+        )
+}
 
 data class Notification(
     val id: String,

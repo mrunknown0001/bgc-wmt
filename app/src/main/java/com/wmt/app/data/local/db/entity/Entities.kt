@@ -44,6 +44,8 @@ data class NotificationEntity(
     val type: String,
     val taskId: Int?,
     val projectId: Int?,
+    val approvalProjectId: Int? = null,
+    val approvalRequestId: Int? = null,
     val readAt: String?,
     val createdAt: String,
 )

@@ -73,6 +73,8 @@ fun Notification.toEntity() = NotificationEntity(
     type = data.type,
     taskId = data.taskId,
     projectId = data.projectId,
+    approvalProjectId = data.approvalProjectId,
+    approvalRequestId = data.approvalRequestId,
     readAt = readAt,
     createdAt = createdAt,
 )
@@ -85,6 +87,8 @@ fun NotificationEntity.toDomain() = Notification(
         type = type,
         taskId = taskId,
         projectId = projectId,
+        approvalProjectId = approvalProjectId,
+        approvalRequestId = approvalRequestId,
     ),
     readAt = readAt,
     createdAt = createdAt,

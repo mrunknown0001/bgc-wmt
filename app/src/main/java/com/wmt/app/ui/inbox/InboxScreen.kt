@@ -56,6 +56,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.wmt.app.domain.model.Notification
+import com.wmt.app.domain.model.NotificationTarget
 import com.wmt.app.domain.model.UserSummary
 import kotlinx.coroutines.delay
 import com.wmt.app.ui.components.EmptyState
@@ -70,7 +71,7 @@ import com.wmt.app.util.DateUtils
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun InboxScreen(
-    onNotificationClick: (projectId: Int?, taskId: Int?) -> Unit,
+    onNotificationClick: (NotificationTarget?) -> Unit,
     currentUser: UserSummary? = null,
     onOpenProfile: () -> Unit = {},
     viewModel: InboxViewModel = hiltViewModel(),

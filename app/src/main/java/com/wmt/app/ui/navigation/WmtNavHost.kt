@@ -40,6 +40,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import com.wmt.app.domain.model.NotificationTarget
 import com.wmt.app.fcm.InAppMessage
 import com.wmt.app.ui.approvals.ApprovalDetailScreen
 import com.wmt.app.ui.approvals.ApprovalFormScreen
@@ -63,7 +64,7 @@ import kotlinx.coroutines.flow.Flow
 /** Top-level switch between setup, login and the main app based on [RootViewModel] state. */
 @Composable
 fun WmtApp(
-    intentDeepLinks: Flow<DeepLink>,
+    intentDeepLinks: Flow<NotificationTarget>,
     viewModel: RootViewModel = hiltViewModel(),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
@@ -92,38 +93,64 @@ private fun SplashScreen() {
 @Composable
 private fun MainScaffold(
     state: RootUiState,
-    deepLinks: Flow<DeepLink>,
-    intentDeepLinks: Flow<DeepLink>,
+    deepLinks: Flow<NotificationTarget>,
+    intentDeepLinks: Flow<NotificationTarget>,
     inAppMessages: Flow<InAppMessage>,
-    onDeepLinkConsumed: (Int?, Int?) -> Unit,
+    onDeepLinkConsumed: (NotificationTarget?) -> Unit,
 ) {
     val navController = rememberNavController()
     val snackbarHostState = androidx.compose.runtime.remember { SnackbarHostState() }
 
-    // Route notification taps (both in-app FCM events and launch intents) to detail screens.
+    // Read at call time rather than captured: the collectors below start once, while the
+    // capability arrives with the user, after the first composition.
+    val canUseApprovals by androidx.compose.runtime.rememberUpdatedState(state.canUseApprovals)
+
+    // Where a notification tap lands, whichever half of the inbox it came from.
+    //
+    // Approvals are gated on the capability the server reports: a push can outrun a
+    // right that has since been withdrawn, and the approval screens would only 403.
+    // Those taps fall back to the Inbox, which still holds the message.
+    val navigateToTarget: (NotificationTarget) -> Unit = { target ->
+        fun openTab(route: String) = navController.navigate(route) {
+            popUpTo(navController.graph.findStartDestination().id) { saveState = true }
+            launchSingleTop = true
+            restoreState = true
+        }
+        when (target) {
+            is NotificationTarget.Task ->
+                navController.navigate(MainRoutes.taskDetail(target.projectId, target.taskId))
+            is NotificationTarget.Project ->
+                navController.navigate(MainRoutes.projectDetail(target.projectId))
+            is NotificationTarget.ApprovalRequest ->
+                if (canUseApprovals) {
+                    navController.navigate(
+                        MainRoutes.approvalDetail(target.projectId, target.requestId),
+                    )
+                } else {
+                    openTab(MainRoutes.INBOX)
+                }
+            NotificationTarget.ApprovalQueue ->
+                openTab(if (canUseApprovals) MainRoutes.APPROVALS else MainRoutes.INBOX)
+        }
+    }
+
+    // Route notification taps (both in-app FCM events and launch intents) to their screens.
     androidx.compose.runtime.LaunchedEffect(Unit) {
-        intentDeepLinks.collect { onDeepLinkConsumed(it.projectId, it.taskId) }
+        intentDeepLinks.collect(onDeepLinkConsumed)
     }
     androidx.compose.runtime.LaunchedEffect(Unit) {
-        deepLinks.collect { link ->
-            when {
-                link.projectId != null && link.taskId != null ->
-                    navController.navigate(MainRoutes.taskDetail(link.projectId, link.taskId))
-                link.projectId != null ->
-                    navController.navigate(MainRoutes.projectDetail(link.projectId))
-            }
-        }
+        deepLinks.collect(navigateToTarget)
     }
     // Foreground FCM messages surface as an in-app snackbar with a "View" action.
     androidx.compose.runtime.LaunchedEffect(Unit) {
         inAppMessages.collect { msg ->
             val result = snackbarHostState.showSnackbar(
                 message = if (msg.body.isBlank()) msg.title else "${msg.title}: ${msg.body}",
-                actionLabel = if (msg.projectId != null || msg.taskId != null) "View" else null,
+                actionLabel = if (msg.target != null) "View" else null,
                 duration = SnackbarDuration.Short,
             )
             if (result == SnackbarResult.ActionPerformed) {
-                onDeepLinkConsumed(msg.projectId, msg.taskId)
+                onDeepLinkConsumed(msg.target)
             }
         }
     }
@@ -139,6 +166,7 @@ private fun MainScaffold(
         MainNavHost(
             navController = navController,
             state = state,
+            onNotificationTarget = navigateToTarget,
             modifier = Modifier.padding(padding),
         )
     }
@@ -214,6 +242,7 @@ private fun WmtBottomBar(navController: NavHostController, state: RootUiState) {
 private fun MainNavHost(
     navController: NavHostController,
     state: RootUiState,
+    onNotificationTarget: (NotificationTarget) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     // Profile left the navigation bar when Approvals took the fifth slot, so it is
@@ -284,14 +313,7 @@ private fun MainNavHost(
             InboxScreen(
                 currentUser = state.currentUser,
                 onOpenProfile = openProfile,
-                onNotificationClick = { projectId, taskId ->
-                    when {
-                        projectId != null && taskId != null ->
-                            navController.navigate(MainRoutes.taskDetail(projectId, taskId))
-                        projectId != null ->
-                            navController.navigate(MainRoutes.projectDetail(projectId))
-                    }
-                },
+                onNotificationClick = { target -> target?.let(onNotificationTarget) },
             )
         }
         composable(MainRoutes.APPROVALS) {

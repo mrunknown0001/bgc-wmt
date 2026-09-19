@@ -18,7 +18,8 @@ import com.wmt.app.data.local.db.entity.TaskEntity
         NotificationEntity::class,
         DashboardEntity::class,
     ],
-    version = 1,
+    // 2: notifications carry the approval request a tap should open.
+    version = 2,
     exportSchema = false,
 )
 abstract class WmtDatabase : RoomDatabase() {

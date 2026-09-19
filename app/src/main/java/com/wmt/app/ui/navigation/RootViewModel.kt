@@ -8,6 +8,7 @@ import com.wmt.app.data.remote.SessionManager
 import com.wmt.app.fcm.InAppMessage
 import com.wmt.app.fcm.InAppNotificationBus
 import com.wmt.app.domain.model.ApprovalCounts
+import com.wmt.app.domain.model.NotificationTarget
 import com.wmt.app.domain.model.UserSummary
 import com.wmt.app.domain.repository.ApprovalRepository
 import com.wmt.app.domain.repository.AuthRepository
@@ -29,9 +30,6 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
 import javax.inject.Inject
-
-/** Where a notification tap wants to land. */
-data class DeepLink(val projectId: Int?, val taskId: Int?)
 
 data class RootUiState(
     val booting: Boolean = true,
@@ -84,7 +82,7 @@ class RootViewModel @Inject constructor(
     /** Guards the one-off rotation for sessions predating expiry tracking. */
     private var rotatedUnknownExpiry = false
 
-    private val _deepLinks = MutableSharedFlow<DeepLink>(extraBufferCapacity = 4)
+    private val _deepLinks = MutableSharedFlow<NotificationTarget>(extraBufferCapacity = 4)
     val deepLinks = _deepLinks.asSharedFlow()
 
     init {
@@ -188,9 +186,9 @@ class RootViewModel @Inject constructor(
         }
     }
 
-    fun onDeepLink(projectId: Int?, taskId: Int?) {
-        if (projectId == null && taskId == null) return
-        _deepLinks.tryEmit(DeepLink(projectId, taskId))
+    fun onDeepLink(target: NotificationTarget?) {
+        if (target == null) return
+        _deepLinks.tryEmit(target)
     }
 
     /** Clears the configured server URL (and session) so the app returns to setup. */

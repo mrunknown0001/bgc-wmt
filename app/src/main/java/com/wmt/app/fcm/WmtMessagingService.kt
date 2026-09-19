@@ -9,6 +9,7 @@ import com.google.firebase.messaging.RemoteMessage
 import com.wmt.app.MainActivity
 import com.wmt.app.R
 import com.wmt.app.di.ApplicationScope
+import com.wmt.app.domain.model.NotificationTarget
 import com.wmt.app.domain.repository.AuthRepository
 import com.wmt.app.domain.repository.NotificationRepository
 import com.wmt.app.util.Constants
@@ -35,33 +36,42 @@ class WmtMessagingService : FirebaseMessagingService() {
     }
 
     override fun onMessageReceived(message: RemoteMessage) {
-        val data = message.data
-        val title = data["title"] ?: message.notification?.title ?: "WMT"
-        val body = data["body"] ?: message.notification?.body.orEmpty()
-        val type = data["type"]
-        val projectId = data["project_id"]?.toIntOrNull()
-        val taskId = data["task_id"]?.toIntOrNull()
+        val push = PushPayload.from(
+            data = message.data,
+            notificationTitle = message.notification?.title,
+            notificationBody = message.notification?.body,
+        )
 
         notificationRepository.incrementUnreadLocally()
-        inAppBus.emit(InAppMessage(title, body, projectId, taskId))
-        showNotification(title, body, type, projectId, taskId, data["notification_id"])
+        inAppBus.emit(InAppMessage(push.title, push.body, push.target))
+        showNotification(push)
     }
 
-    private fun showNotification(
-        title: String,
-        body: String,
-        type: String?,
-        projectId: Int?,
-        taskId: Int?,
-        notificationId: String?,
-    ) {
+    private fun showNotification(push: PushPayload) {
         val intent = Intent(this, MainActivity::class.java).apply {
             flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
-            projectId?.let { putExtra(MainActivity.EXTRA_PROJECT_ID, it) }
-            taskId?.let { putExtra(MainActivity.EXTRA_TASK_ID, it) }
-            notificationId?.let { putExtra(MainActivity.EXTRA_NOTIFICATION_ID, it) }
+            // The extras carry the server's own key names, so a tap reads the same
+            // whether this notification posted it or FCM launched the activity itself
+            // from a notification-payload message, which passes the data through as
+            // strings.
+            push.type?.let { putExtra(MainActivity.EXTRA_TYPE, it) }
+            when (val target = push.target) {
+                is NotificationTarget.Task -> {
+                    putExtra(MainActivity.EXTRA_PROJECT_ID, target.projectId)
+                    putExtra(MainActivity.EXTRA_TASK_ID, target.taskId)
+                }
+                is NotificationTarget.Project ->
+                    putExtra(MainActivity.EXTRA_PROJECT_ID, target.projectId)
+                is NotificationTarget.ApprovalRequest -> {
+                    putExtra(MainActivity.EXTRA_APPROVAL_PROJECT_ID, target.projectId)
+                    putExtra(MainActivity.EXTRA_APPROVAL_REQUEST_ID, target.requestId)
+                }
+                // The type alone already lands on the queue; nothing more to carry.
+                NotificationTarget.ApprovalQueue, null -> Unit
+            }
+            push.notificationId?.let { putExtra(MainActivity.EXTRA_NOTIFICATION_ID, it) }
         }
-        val requestCode = notificationId?.hashCode() ?: counter.incrementAndGet()
+        val requestCode = push.notificationId?.hashCode() ?: counter.incrementAndGet()
         val pendingIntent = PendingIntent.getActivity(
             this,
             requestCode,
@@ -69,21 +79,21 @@ class WmtMessagingService : FirebaseMessagingService() {
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
         )
 
-        val category = categoryLabel(type)
+        val category = categoryLabel(push.type)
 
         val notification = NotificationCompat.Builder(this, Constants.NOTIFICATION_CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_stat_notification)
-            .setContentTitle(title)
-            .setContentText(body)
+            .setContentTitle(push.title)
+            .setContentText(push.body)
             .setStyle(
                 NotificationCompat.BigTextStyle()
-                    .setBigContentTitle(title)
-                    .bigText(body)
+                    .setBigContentTitle(push.title)
+                    .bigText(push.body)
                     .setSummaryText(category),
             )
             .setSubText(category)
             .setColor(BRAND_COLOR)
-            .setCategory(systemCategory(type))
+            .setCategory(systemCategory(push.type))
             .setWhen(System.currentTimeMillis())
             .setShowWhen(true)
             .setAutoCancel(true)
@@ -98,7 +108,14 @@ class WmtMessagingService : FirebaseMessagingService() {
         }
     }
 
-    /** Human-readable category shown as the notification sub-text. */
+    /**
+     * Human-readable category shown as the notification sub-text.
+     *
+     * Approvals carry two quite different messages — a request waiting on you, and the
+     * verdict on one you raised — so they are labelled apart rather than sharing a
+     * single line. An approval type this build has not seen still says "Approvals"
+     * rather than falling through to "Workload".
+     */
     private fun categoryLabel(type: String?): String = when (type) {
         "task_assigned" -> "Task assigned"
         "task_due_soon", "task_due_reminder", "task_overdue" -> "Due date"
@@ -106,13 +123,20 @@ class WmtMessagingService : FirebaseMessagingService() {
         "task_comment_mention" -> "Mention"
         "comment_deleted" -> "Comment"
         "task_escalated" -> "Escalation"
-        else -> "Workload"
+        "approval_requested", "approval_pending", "approval_step_activated" -> "Approval needed"
+        "approval_approved" -> "Approved"
+        "approval_rejected" -> "Rejected"
+        "approval_changes_requested" -> "Changes requested"
+        "approval_resubmitted" -> "Resubmitted"
+        "approval_comment" -> "Approval comment"
+        else -> if (NotificationTarget.isApprovalType(type)) "Approvals" else "Workload"
     }
 
     /** Maps to a system notification category for ranking/grouping. */
     private fun systemCategory(type: String?): String = when (type) {
-        "task_comment", "subtask_comment", "task_comment_mention", "comment_deleted" ->
-            NotificationCompat.CATEGORY_MESSAGE
+        "task_comment", "subtask_comment", "task_comment_mention", "comment_deleted",
+        "approval_comment",
+        -> NotificationCompat.CATEGORY_MESSAGE
         "task_due_soon", "task_due_reminder", "task_overdue" ->
             NotificationCompat.CATEGORY_REMINDER
         else -> NotificationCompat.CATEGORY_EVENT

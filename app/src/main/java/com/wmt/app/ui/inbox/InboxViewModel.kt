@@ -3,6 +3,7 @@ package com.wmt.app.ui.inbox
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.wmt.app.domain.model.Notification
+import com.wmt.app.domain.model.NotificationTarget
 import com.wmt.app.data.remote.RealtimeClient
 import com.wmt.app.fcm.InAppNotificationBus
 import com.wmt.app.domain.repository.NotificationRepository
@@ -156,7 +157,7 @@ class InboxViewModel @Inject constructor(
 
     fun onNotificationClick(
         n: Notification,
-        navigate: (projectId: Int?, taskId: Int?) -> Unit,
+        navigate: (NotificationTarget?) -> Unit,
     ) {
         if (n.isUnread) {
             // Reflect the change in the list immediately; the server call follows.
@@ -168,7 +169,7 @@ class InboxViewModel @Inject constructor(
             }
             viewModelScope.launch { repository.markRead(n.id) }
         }
-        navigate(n.data.projectId, n.data.taskId)
+        navigate(n.data.target)
     }
 
     /** Marks a single notification read (optimistic) without navigating — used by swipe. */
