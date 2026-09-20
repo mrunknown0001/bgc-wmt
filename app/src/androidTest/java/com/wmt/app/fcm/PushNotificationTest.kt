@@ -106,6 +106,13 @@ class PushNotificationTest {
     }
 
     @Test
+    fun aBlockedAutomationIsLabelledAsAutomation() {
+        val notification = post(push("type" to "automation_blocked"), id = 4007)
+
+        assertEquals("Automation", notification.extras.getString(Notification.EXTRA_SUB_TEXT))
+    }
+
+    @Test
     fun aTaskPushIsUnchangedByTheApprovalWork() {
         val notification = post(
             push("type" to "task_assigned", "title" to "Close the books", "project_id" to "4"),

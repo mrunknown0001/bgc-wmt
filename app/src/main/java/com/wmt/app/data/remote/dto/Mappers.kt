@@ -8,6 +8,7 @@ import com.wmt.app.domain.model.DashboardData
 import com.wmt.app.domain.model.DashboardStats
 import com.wmt.app.domain.model.Department
 import com.wmt.app.domain.model.Notification
+import com.wmt.app.domain.model.NotificationTarget
 import com.wmt.app.domain.model.NotificationData
 import com.wmt.app.domain.model.PersonalTodo
 import com.wmt.app.domain.model.Project
@@ -184,15 +185,21 @@ private fun TaskDetailResponse.toClock() = TaskClock(
 
 fun NotificationDto.toDomain(): Notification {
     val d = data
-    val title = d.title ?: when (d.type) {
+    val title = d.title ?: approvalTitle(d) ?: when (d.type) {
         "task_comment_mention" -> "${d.mentionedBy ?: "Someone"} mentioned you"
         "task_comment" -> "New comment"
         "task_assigned" -> "${d.assignedBy ?: "Someone"} assigned you a task"
+        "automation_blocked" ->
+            d.ruleName?.let { "Automation blocked: $it" } ?: "Automation blocked"
         else -> d.type.replace('_', ' ').replaceFirstChar { it.uppercase() }.ifBlank { "Notification" }
     }
-    val bodySource = d.body ?: d.commentPreview ?: d.taskTitle.orEmpty()
+    // Approvals and automation carry their own line: the request that was raised or
+    // decided, and the rule's reason for refusing. Neither ships a `body`, so without
+    // this the row reads as a bare heading.
+    val bodySource = d.body ?: d.commentPreview ?: d.reason ?: d.itemTitle ?: d.taskTitle.orEmpty()
     val body = stripHtml(bodySource).ifBlank {
-        listOfNotNull(d.taskTitle, d.projectName).joinToString(" • ")
+        listOfNotNull(d.itemTitle ?: d.taskTitle, d.approvalProjectName ?: d.projectName)
+            .joinToString(" • ")
     }
     return Notification(
         id = id,
@@ -237,9 +244,39 @@ fun PersonalTodoDto.toDomain() = PersonalTodo(
     position = position ?: 0,
 )
 
-/** Flattens an HTML snippet to plain text for compact list display (e.g. notifications). */
-private fun stripHtml(html: String): String =
-    if (html.isBlank()) "" else HtmlCompat.fromHtml(html, HtmlCompat.FROM_HTML_MODE_COMPACT).toString().trim()
+/**
+ * Who the approval notification is about, said the way the payload says it.
+ *
+ * The server names the person and the outcome rather than writing a sentence, and sends
+ * no `title` of its own, so these are assembled here. An outcome this build does not
+ * recognise falls through to the generic heading rather than inventing a verb for it.
+ */
+private fun approvalTitle(d: NotificationDataDto): String? = when {
+    !NotificationTarget.isApprovalType(d.type) -> null
+    d.type == "approval_requested" ->
+        d.requester?.let { "$it raised a request" } ?: "Approval requested"
+    d.decidedBy != null -> outcomeVerb(d.outcome)?.let { "${d.decidedBy} $it a request" }
+    else -> null
+}
+
+private fun outcomeVerb(outcome: String?): String? = when (outcome) {
+    "approved" -> "approved"
+    "rejected" -> "rejected"
+    "changes_requested" -> "asked for changes on"
+    else -> null
+}
+
+/**
+ * Flattens an HTML snippet to plain text for compact list display (e.g. notifications).
+ *
+ * Most of what arrives here is already plain — a task title, a request title, a rule's
+ * reason — so the parser is only reached for text that actually carries markup.
+ */
+private fun stripHtml(html: String): String = when {
+    html.isBlank() -> ""
+    !html.contains('<') && !html.contains('&') -> html.trim()
+    else -> HtmlCompat.fromHtml(html, HtmlCompat.FROM_HTML_MODE_COMPACT).toString().trim()
+}
 
 fun DashboardDto.toDomain() = DashboardData(
     stats = DashboardStats(

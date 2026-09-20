@@ -118,6 +118,7 @@ internal fun categoryLabel(type: String?): String = when (type) {
     "approval_changes_requested" -> "Changes requested"
     "approval_resubmitted" -> "Resubmitted"
     "approval_comment" -> "Approval comment"
+    "automation_blocked" -> "Automation"
     else -> if (NotificationTarget.isApprovalType(type)) "Approvals" else "Workload"
 }
 
