@@ -1,9 +1,12 @@
 package com.wmt.app.data.remote.dto
 
 import com.squareup.moshi.Moshi
+import com.squareup.moshi.Types
 import com.wmt.app.domain.model.NotificationTarget
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
@@ -180,4 +183,47 @@ class NotificationMapperTest {
         )
         assertNull(notification.data.approvalRequestId)
     }
+
+    @Test
+    fun `the list envelope carries the paging the inbox scrolls with`() {
+        // The deployed server answers /api/notifications with Laravel's length-aware
+        // paginator; the app read only `data` before, which is why the inbox stopped
+        // dead at twenty rows.
+        val page = parsePage(
+            """
+            {
+              "current_page": 2,
+              "data": [
+                {"id": "9f3c-20", "data": {"type": "task_assigned", "title": "A", "body": "b"},
+                 "created_at": "2026-09-18T08:00:00+08:00"}
+              ],
+              "first_page_url": "https://wmt-dev.bfcgroup.ph/api/notifications?page=1",
+              "from": 21, "last_page": 4, "per_page": 20, "to": 40, "total": 73
+            }
+            """.trimIndent(),
+        )
+
+        assertEquals(1, page.items.size)
+        assertEquals("9f3c-20", page.items.first().id)
+        assertEquals(2, page.page)
+        assertEquals(4, page.lastPage)
+        assertEquals(73, page.total)
+        assertTrue("page 2 of 4 has more to fetch", page.hasMore)
+    }
+
+    @Test
+    fun `the last page reports nothing more to fetch`() {
+        val page = parsePage(
+            """{"current_page": 4, "data": [], "last_page": 4, "per_page": 20, "total": 73}""",
+        )
+
+        assertFalse(page.hasMore)
+    }
+
+    private fun parsePage(json: String) =
+        requireNotNull(
+            moshi.adapter<Paginated<NotificationDto>>(
+                Types.newParameterizedType(Paginated::class.java, NotificationDto::class.java),
+            ).fromJson(json),
+        ).toPage { it.toDomain() }
 }

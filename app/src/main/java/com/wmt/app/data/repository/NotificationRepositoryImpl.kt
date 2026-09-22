@@ -8,9 +8,11 @@ import com.wmt.app.data.local.db.toEntity
 import com.wmt.app.data.remote.api.WmtApi
 import com.wmt.app.data.remote.dto.NotificationPreferenceRequest
 import com.wmt.app.data.remote.dto.toDomain
+import com.wmt.app.data.remote.dto.toPage
 import com.wmt.app.data.remote.safeApiCall
 import com.wmt.app.di.ApplicationScope
 import com.wmt.app.domain.model.Notification
+import com.wmt.app.domain.model.Page
 import com.wmt.app.domain.repository.NotificationRepository
 import com.wmt.app.util.Resource
 import kotlinx.coroutines.CoroutineScope
@@ -34,22 +36,31 @@ class NotificationRepositoryImpl @Inject constructor(
     override val unreadCount: Flow<Int> = prefs.unreadCount
     override val preferences: Flow<Map<String, Boolean>> = prefs.notificationPreferences
 
-    override fun notifications(filter: String?): Flow<Resource<List<Notification>>> = flow {
+    override fun notifications(filter: String?): Flow<Resource<Page<Notification>>> = flow {
         // Only the default inbox list is cached offline; filtered views go straight to the API.
         val useCache = filter == null || filter == "inbox"
         val cached = if (useCache) dao.observeAll().first().map { it.toDomain() } else emptyList()
-        emit(Resource.Loading(if (useCache) cached else null))
+        // The cache is one page and cannot serve another, so it reports no more pages;
+        // the network page that follows carries what the server actually has.
+        emit(Resource.Loading(if (useCache) Page(items = cached) else null))
 
         when (val result = safeApiCall(moshi) { api.notifications(filter) }) {
             is Resource.Success -> {
-                val items = result.data.data.map { it.toDomain() }
-                if (useCache) dao.replaceAll(items.map { it.toEntity() })
-                emit(Resource.Success(items))
+                val page = result.data.toPage { it.toDomain() }
+                if (useCache) dao.replaceAll(page.items.map { it.toEntity() })
+                emit(Resource.Success(page))
             }
-            is Resource.Error -> emit(Resource.Error(result.error, if (useCache) cached else null))
+            is Resource.Error -> emit(
+                Resource.Error(result.error, if (useCache) Page(items = cached) else null),
+            )
             is Resource.Loading -> Unit
         }
     }
+
+    override suspend fun notificationsPage(filter: String?, page: Int): Resource<Page<Notification>> =
+        // Deliberately not cached: Room holds the first page as the offline inbox, and
+        // writing later pages into it would make the cache grow without bound.
+        safeApiCall(moshi) { api.notifications(filter, page).toPage { it.toDomain() } }
 
     override suspend fun toggleBookmark(id: String): Resource<Unit> =
         safeApiCall(moshi) {

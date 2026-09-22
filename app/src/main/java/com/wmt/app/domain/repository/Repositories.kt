@@ -213,8 +213,14 @@ interface ProjectRepository {
 }
 
 interface NotificationRepository {
-    /** [filter]: null/"inbox" (default), "unread", "mentioned", "bookmarked", "archived". */
-    fun notifications(filter: String? = null): Flow<Resource<List<Notification>>>
+    /**
+     * First page, cached offline for the default inbox. [filter]: null/"inbox"
+     * (default), "unread", "mentioned", "bookmarked", "archived".
+     */
+    fun notifications(filter: String? = null): Flow<Resource<Page<Notification>>>
+
+    /** A later page of the same list, straight from the server and not cached. */
+    suspend fun notificationsPage(filter: String? = null, page: Int): Resource<Page<Notification>>
     suspend fun toggleBookmark(id: String): Resource<Unit>
     suspend fun archive(id: String): Resource<Unit>
     suspend fun unarchive(id: String): Resource<Unit>

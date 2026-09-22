@@ -264,8 +264,16 @@ interface WmtApi {
         @Part attachments: List<MultipartBody.Part>,
     ): MessageResponse
 
+    /**
+     * Laravel's paginator, 20 per page — the inbox pages through it with [page]. The
+     * envelope carries `current_page`/`last_page`, so the end of the list is the
+     * server's answer rather than a guess from a short page.
+     */
     @GET("api/notifications")
-    suspend fun notifications(@Query("filter") filter: String? = null): ApiList<NotificationDto>
+    suspend fun notifications(
+        @Query("filter") filter: String? = null,
+        @Query("page") page: Int? = null,
+    ): Paginated<NotificationDto>
 
     @GET("api/notifications/unread-count")
     suspend fun unreadCount(): UnreadCountResponse

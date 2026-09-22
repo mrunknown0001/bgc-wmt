@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
@@ -29,12 +30,15 @@ import androidx.compose.material.icons.rounded.Archive
 import androidx.compose.material.icons.rounded.Bookmark
 import androidx.compose.material.icons.rounded.BookmarkBorder
 import androidx.compose.material.icons.rounded.Unarchive
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.SwipeToDismissBox
 import androidx.compose.material3.SwipeToDismissBoxValue
 import androidx.compose.material3.Text
@@ -45,9 +49,12 @@ import androidx.compose.material3.rememberSwipeToDismissBoxState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
@@ -78,12 +85,33 @@ fun InboxScreen(
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val scrollBehavior = TopAppBarDefaults.enterAlwaysScrollBehavior()
+    val listState = rememberLazyListState()
+    val snackbarHostState = remember { SnackbarHostState() }
 
     // Near-real-time: silently refresh while the Inbox is on screen.
     LaunchedEffect(Unit) {
         while (true) {
             delay(20_000)
             viewModel.poll()
+        }
+    }
+
+    // Page in before the last row is reached, so scrolling doesn't stall on the request.
+    LaunchedEffect(listState) {
+        snapshotFlow {
+            val last = listState.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: 0
+            val total = listState.layoutInfo.totalItemsCount
+            total > 0 && last >= total - PREFETCH_DISTANCE
+        }.collect { nearEnd -> if (nearEnd) viewModel.loadMore() }
+    }
+
+    // With rows on screen the list stays put and the failure is said out loud; an empty
+    // list still gets the full-screen ErrorView below.
+    val errorMessage = state.error
+    if (errorMessage != null && state.notifications.isNotEmpty()) {
+        LaunchedEffect(errorMessage) {
+            snackbarHostState.showSnackbar(errorMessage)
+            viewModel.dismissError()
         }
     }
 
@@ -101,6 +129,7 @@ fun InboxScreen(
                 },
             )
         },
+        snackbarHost = { SnackbarHost(snackbarHostState) },
     ) { padding ->
         Column(modifier = Modifier.padding(padding)) {
             OfflineBanner(visible = state.offline)
@@ -142,6 +171,7 @@ fun InboxScreen(
                         icon = Icons.Default.NotificationsNone,
                     )
                     else -> LazyColumn(
+                        state = listState,
                         modifier = Modifier.fillMaxSize(),
                         contentPadding = PaddingValues(vertical = 8.dp),
                     ) {
@@ -193,6 +223,18 @@ fun InboxScreen(
                             }
                             ThinDivider(startIndent = 68.dp)
                         }
+                        if (state.loadingMore) {
+                            item {
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(16.dp),
+                                    contentAlignment = Alignment.Center,
+                                ) {
+                                    CircularProgressIndicator(strokeWidth = 2.dp)
+                                }
+                            }
+                        }
                     }
                 }
             }
@@ -207,16 +249,20 @@ private fun NotificationRow(
     onToggleBookmark: () -> Unit,
     onToggleArchive: () -> Unit,
 ) {
-    val background = if (notification.isUnread) {
+    // The unread tint is translucent, and the row sits directly on top of the swipe
+    // background — so it is painted over an opaque surface rather than straight onto
+    // the "Mark read" panel, which otherwise reads through every unread row.
+    val tint = if (notification.isUnread) {
         MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.35f)
     } else {
-        MaterialTheme.colorScheme.surface
+        Color.Transparent
     }
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .clickable(onClick = onClick)
-            .background(background)
+            .background(MaterialTheme.colorScheme.surface)
+            .background(tint)
             .padding(horizontal = 16.dp, vertical = 14.dp),
         horizontalArrangement = Arrangement.spacedBy(12.dp),
     ) {
@@ -295,6 +341,9 @@ private fun NotificationRow(
         }
     }
 }
+
+/** Rows from the end at which the next page is requested. */
+private const val PREFETCH_DISTANCE = 3
 
 private fun iconForType(type: String): ImageVector {
     val lower = type.lowercase()

@@ -336,6 +336,16 @@ class WmtApiContractTest {
     }
 
     @Test
+    fun `the inbox asks for later pages by number, and page one by omission`() = runTest {
+        api.notifications(filter = "unread", page = 3)
+        assertSent("GET", "/api/notifications?filter=unread&page=3")
+
+        api.notifications()
+        assertSent("GET", "/api/notifications")
+        assertNull("page one must not be pinned in the query", last.url.queryParameter("page"))
+    }
+
+    @Test
     fun `notification preferences read and write one switch at a time`() = runTest {
         api.notificationPreferences()
         // Not shadowed by web.php, unlike /api/search — this literal path is the one
