@@ -6,6 +6,7 @@ import com.wmt.app.data.local.db.dao.NotificationDao
 import com.wmt.app.data.local.db.toDomain
 import com.wmt.app.data.local.db.toEntity
 import com.wmt.app.data.remote.api.WmtApi
+import com.wmt.app.data.remote.dto.NotificationPreferenceRequest
 import com.wmt.app.data.remote.dto.toDomain
 import com.wmt.app.data.remote.safeApiCall
 import com.wmt.app.di.ApplicationScope
@@ -31,6 +32,7 @@ class NotificationRepositoryImpl @Inject constructor(
 ) : NotificationRepository {
 
     override val unreadCount: Flow<Int> = prefs.unreadCount
+    override val preferences: Flow<Map<String, Boolean>> = prefs.notificationPreferences
 
     override fun notifications(filter: String?): Flow<Resource<List<Notification>>> = flow {
         // Only the default inbox list is cached offline; filtered views go straight to the API.
@@ -99,6 +101,30 @@ class NotificationRepositoryImpl @Inject constructor(
             dao.markAllRead(Instant.now().toString())
             prefs.saveUnreadCount(0)
         }
+        return result
+    }
+
+    override suspend fun refreshPreferences(): Resource<Unit> {
+        val result = safeApiCall(moshi) { api.notificationPreferences() }
+        if (result is Resource.Success) prefs.saveNotificationPreferences(result.data)
+        return when (result) {
+            is Resource.Success -> Resource.Success(Unit)
+            is Resource.Error -> Resource.Error(result.error)
+            is Resource.Loading -> Resource.Loading()
+        }
+    }
+
+    override suspend fun setPreference(type: String, enabled: Boolean): Resource<Unit> {
+        // Flip locally first so the switch answers the tap, then persist. A refused write
+        // puts the old value back rather than leaving the UI claiming something the
+        // server never accepted.
+        val before = prefs.notificationPreferences.first()
+        prefs.saveNotificationPreferences(before.toMutableMap().apply { this[type] = enabled })
+        val result = safeApiCall(moshi) {
+            api.updateNotificationPreference(NotificationPreferenceRequest(type, enabled))
+            Unit
+        }
+        if (result is Resource.Error) prefs.saveNotificationPreferences(before)
         return result
     }
 }

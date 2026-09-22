@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.google.firebase.messaging.FirebaseMessaging
 import com.wmt.app.domain.model.User
 import com.wmt.app.domain.repository.AuthRepository
+import com.wmt.app.domain.repository.NotificationRepository
 import com.wmt.app.domain.repository.SettingsRepository
 import com.wmt.app.util.Resource
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -22,6 +23,8 @@ data class ProfileUiState(
     val user: User? = null,
     val serverUrl: String? = null,
     val themeMode: String = "system",
+    /** Server-keyed email notification switches; empty until the first read lands. */
+    val notificationPreferences: Map<String, Boolean> = emptyMap(),
 )
 
 data class ChangePasswordUiState(
@@ -40,17 +43,20 @@ data class SignOutOthersUiState(
 class ProfileViewModel @Inject constructor(
     private val authRepository: AuthRepository,
     private val settingsRepository: SettingsRepository,
+    private val notificationRepository: NotificationRepository,
 ) : ViewModel() {
 
     val state: StateFlow<ProfileUiState> = combine(
         authRepository.currentUser,
         settingsRepository.serverUrl,
         settingsRepository.themeMode,
-    ) { user, serverUrl, themeMode ->
+        notificationRepository.preferences,
+    ) { user, serverUrl, themeMode, preferences ->
         ProfileUiState(
             user = user,
             serverUrl = serverUrl,
             themeMode = themeMode,
+            notificationPreferences = preferences,
         )
     }.stateIn(
         scope = viewModelScope,
@@ -135,10 +141,41 @@ class ProfileViewModel @Inject constructor(
         viewModelScope.launch {
             runCatching { authRepository.refreshProfile() }
         }
+        // The cached switches render immediately; this only catches changes made on the
+        // web since the session payload was stored.
+        viewModelScope.launch {
+            runCatching { notificationRepository.refreshPreferences() }
+        }
     }
 
     fun setTheme(mode: String) {
         viewModelScope.launch { settingsRepository.setThemeMode(mode) }
+    }
+
+    private val _preferenceError = MutableStateFlow<String?>(null)
+
+    /** Set when a switch could not be saved; the switch has already snapped back. */
+    val preferenceError: StateFlow<String?> = _preferenceError.asStateFlow()
+
+    private val _savingPreferences = MutableStateFlow<Set<String>>(emptySet())
+
+    /** Keys with a write in flight, so a switch can't be flipped twice mid-save. */
+    val savingPreferences: StateFlow<Set<String>> = _savingPreferences.asStateFlow()
+
+    fun setPreference(type: String, enabled: Boolean) {
+        if (type in _savingPreferences.value) return
+        _savingPreferences.value = _savingPreferences.value + type
+        viewModelScope.launch {
+            val result = notificationRepository.setPreference(type, enabled)
+            _savingPreferences.value = _savingPreferences.value - type
+            if (result is Resource.Error) {
+                _preferenceError.value = result.error.message
+            }
+        }
+    }
+
+    fun clearPreferenceError() {
+        _preferenceError.value = null
     }
 
     fun logout(onDone: () -> Unit) {

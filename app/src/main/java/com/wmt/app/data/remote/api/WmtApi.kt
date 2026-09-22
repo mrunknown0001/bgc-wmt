@@ -37,6 +37,7 @@ import com.wmt.app.data.remote.dto.LoginResponse
 import com.wmt.app.data.remote.dto.LogoutOtherDevicesRequest
 import com.wmt.app.data.remote.dto.MessageResponse
 import com.wmt.app.data.remote.dto.NotificationDto
+import com.wmt.app.data.remote.dto.NotificationPreferenceRequest
 import com.wmt.app.data.remote.dto.PatchRequest
 import com.wmt.app.data.remote.dto.PausePreviewDto
 import com.wmt.app.data.remote.dto.PauseTaskRequest
@@ -283,6 +284,15 @@ interface WmtApi {
 
     @PATCH("api/notifications/{id}/unarchive")
     suspend fun unarchiveNotification(@Path("id") id: String): SuccessResponse
+
+    /** Flat map of switch key to state, e.g. `{"email_task_assigned": true, …}`. */
+    @GET("api/notification-preferences")
+    suspend fun notificationPreferences(): Map<String, Boolean>
+
+    @POST("api/notification-preferences")
+    suspend fun updateNotificationPreference(
+        @Body body: NotificationPreferenceRequest,
+    ): MessageResponse
 
     @GET("api/mobile/search")
     suspend fun search(@Query("q") query: String): SearchResponse

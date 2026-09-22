@@ -223,6 +223,18 @@ interface NotificationRepository {
     fun incrementUnreadLocally()
     suspend fun markRead(id: String): Resource<Unit>
     suspend fun markAllRead(): Resource<Unit>
+
+    /**
+     * Email notification switches, keyed as the server keys them (`email_task_assigned`,
+     * …). Served from the cached session, so it is already populated when Profile opens.
+     */
+    val preferences: Flow<Map<String, Boolean>>
+
+    /** Re-reads the switches from the server; the cached copy stands if the call fails. */
+    suspend fun refreshPreferences(): Resource<Unit>
+
+    /** Flips one switch, rolling the local copy back if the server refuses. */
+    suspend fun setPreference(type: String, enabled: Boolean): Resource<Unit>
 }
 
 /** Lightweight personal checklist (separate from project/standalone tasks). */

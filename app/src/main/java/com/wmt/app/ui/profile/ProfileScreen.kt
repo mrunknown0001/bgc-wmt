@@ -33,6 +33,7 @@ import androidx.compose.material3.SegmentedButtonDefaults
 import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBarDefaults
@@ -66,6 +67,8 @@ fun ProfileScreen(
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val pushDiag by viewModel.pushDiag.collectAsStateWithLifecycle()
+    val savingPrefs by viewModel.savingPreferences.collectAsStateWithLifecycle()
+    val prefsError by viewModel.preferenceError.collectAsStateWithLifecycle()
     val cpState by viewModel.changePassword.collectAsStateWithLifecycle()
     val soState by viewModel.signOutOthers.collectAsStateWithLifecycle()
     var showLogoutDialog by remember { mutableStateOf(false) }
@@ -73,6 +76,13 @@ fun ProfileScreen(
     var showSignOutOthers by remember { mutableStateOf(false) }
     val snackbarHostState = remember { SnackbarHostState() }
     val scrollBehavior = TopAppBarDefaults.enterAlwaysScrollBehavior()
+
+    // A switch that the server refused has already snapped back; say why.
+    LaunchedEffect(prefsError) {
+        val message = prefsError ?: return@LaunchedEffect
+        snackbarHostState.showSnackbar("Couldn't save that setting: $message")
+        viewModel.clearPreferenceError()
+    }
 
     // On success, close the dialog and confirm via snackbar. Errors stay inline in the dialog.
     LaunchedEffect(soState.success) {
@@ -150,6 +160,12 @@ fun ProfileScreen(
             ProfileHeaderCard(user = state.user)
 
             AppearanceSection(current = state.themeMode, onSelect = viewModel::setTheme)
+
+            NotificationPreferencesSection(
+                preferences = state.notificationPreferences,
+                saving = savingPrefs,
+                onToggle = viewModel::setPreference,
+            )
 
             ChangePasswordSection(onClick = { showChangePassword = true })
 
@@ -238,6 +254,70 @@ private fun AppearanceSection(current: String, onSelect: (String) -> Unit) {
                         shape = SegmentedButtonDefaults.itemShape(index, options.size),
                     ) {
                         Text(option.second)
+                    }
+                }
+            }
+        }
+    }
+}
+
+/**
+ * Every key the server sends is an `email_*` one, so the card says email rather than
+ * implying it governs push as well. While the map is still empty — a session cached
+ * before the server sent the block, or the very first paint — the card shows a spinner
+ * instead of an empty list that would read as "no settings".
+ */
+@Composable
+private fun NotificationPreferencesSection(
+    preferences: Map<String, Boolean>,
+    saving: Set<String>,
+    onToggle: (String, Boolean) -> Unit,
+) {
+    Card(modifier = Modifier.fillMaxWidth()) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(4.dp),
+        ) {
+            Text(
+                text = "Email notifications",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold,
+            )
+            Text(
+                text = "Which updates WMT emails you about.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(bottom = 4.dp),
+            )
+
+            if (preferences.isEmpty()) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    CircularProgressIndicator()
+                }
+            } else {
+                NotificationPreferenceLabels.ordered(preferences).forEach { row ->
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        Text(
+                            text = row.label,
+                            style = MaterialTheme.typography.bodyMedium,
+                            modifier = Modifier.weight(1f),
+                        )
+                        Switch(
+                            checked = row.enabled,
+                            enabled = row.key !in saving,
+                            onCheckedChange = { onToggle(row.key, it) },
+                        )
                     }
                 }
             }

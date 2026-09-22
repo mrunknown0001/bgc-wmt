@@ -5,6 +5,7 @@ import com.wmt.app.data.remote.AttachmentPartFactory
 import com.wmt.app.data.remote.dto.ApprovalAdvanceRequest
 import com.wmt.app.data.remote.dto.AddTimeLogRequest
 import com.wmt.app.data.remote.dto.AmendTimeLogRequest
+import com.wmt.app.data.remote.dto.NotificationPreferenceRequest
 import com.wmt.app.data.remote.dto.PauseTaskRequest
 import com.wmt.app.data.remote.dto.ReviewAmendmentRequest
 import com.wmt.app.data.remote.dto.UpdateApprovalItemRequest
@@ -332,6 +333,22 @@ class WmtApiContractTest {
 
         api.rejectAmendment(amendmentId = 5, body = ReviewAmendmentRequest(note = null))
         assertSent("POST", "/api/time-log-amendments/5/reject")
+    }
+
+    @Test
+    fun `notification preferences read and write one switch at a time`() = runTest {
+        api.notificationPreferences()
+        // Not shadowed by web.php, unlike /api/search — this literal path is the one
+        // that answered on the deployed server.
+        assertSent("GET", "/api/notification-preferences")
+
+        api.updateNotificationPreference(
+            NotificationPreferenceRequest(type = "email_task_assigned", enabled = false),
+        )
+        assertSent("POST", "/api/notification-preferences")
+        val body = lastBodyText()
+        assertTrue(body, body.contains("\"type\":\"email_task_assigned\""))
+        assertTrue(body, body.contains("\"enabled\":false"))
     }
 
     private fun textPart(value: String) = AttachmentPartFactory.textPart(value)

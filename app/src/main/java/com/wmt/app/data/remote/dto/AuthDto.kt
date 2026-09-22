@@ -29,6 +29,14 @@ data class UserDto(
     @Json(name = "roles") val roles: List<String> = emptyList(),
     @Json(name = "is_active") val isActive: Boolean? = null,
     @Json(name = "capabilities") val capabilities: UserCapabilitiesDto? = null,
+    /**
+     * Email notification switches, keyed `email_task_assigned` and the like. The server
+     * ships this block inside the login payload, so Profile can render the switches from
+     * the cached session instead of waiting on `/api/notification-preferences`. Empty on
+     * a payload cached before this field existed — hence a seed, not a source of truth:
+     * an empty map never overwrites what is already stored.
+     */
+    @Json(name = "notification_preferences") val notificationPreferences: Map<String, Boolean> = emptyMap(),
 )
 
 @JsonClass(generateAdapter = true)

@@ -7,6 +7,7 @@ import com.wmt.app.data.remote.dto.ChangePasswordRequest
 import com.wmt.app.data.remote.dto.DeviceTokenRequest
 import com.wmt.app.data.remote.dto.LoginRequest
 import com.wmt.app.data.remote.dto.LogoutOtherDevicesRequest
+import com.wmt.app.data.remote.dto.UserDto
 import com.wmt.app.data.remote.dto.toDomain
 import com.wmt.app.data.remote.safeApiCall
 import com.wmt.app.domain.model.User
@@ -37,10 +38,22 @@ class AuthRepositoryImpl @Inject constructor(
             is Resource.Success -> {
                 prefs.saveToken(result.data.token, result.data.expiresAt)
                 prefs.saveUser(result.data.user)
+                seedNotificationPreferences(result.data.user)
                 Resource.Success(result.data.user.toDomain())
             }
             is Resource.Error -> Resource.Error(result.error)
             is Resource.Loading -> Resource.Loading()
+        }
+    }
+
+    /**
+     * The user payload carries the notification switches, so Profile has them without a
+     * second round trip. Only a non-empty block is written: a server or cached payload
+     * that omits it must not wipe switches already stored.
+     */
+    private suspend fun seedNotificationPreferences(user: UserDto) {
+        if (user.notificationPreferences.isNotEmpty()) {
+            prefs.saveNotificationPreferences(user.notificationPreferences)
         }
     }
 
@@ -56,6 +69,7 @@ class AuthRepositoryImpl @Inject constructor(
         return when (result) {
             is Resource.Success -> {
                 prefs.saveUser(result.data)
+                seedNotificationPreferences(result.data)
                 Resource.Success(result.data.toDomain())
             }
             is Resource.Error -> Resource.Error(result.error)

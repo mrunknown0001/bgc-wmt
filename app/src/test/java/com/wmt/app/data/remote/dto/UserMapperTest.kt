@@ -117,6 +117,42 @@ class UserMapperTest {
     }
 
     @Test
+    fun `the session payload carries the notification switches`() {
+        // Verbatim from the deployed server's login response — the block Profile seeds
+        // its switches from, so no extra call is needed to paint the screen.
+        val dto = requireNotNull(
+            moshi.adapter(UserDto::class.java).fromJson(
+                """
+                {"id": 1, "name": "Admin", "email": "admin@wmt.com", "roles": ["admin"],
+                 "notification_preferences": {
+                   "email_task_assigned": true, "email_task_due_soon": true,
+                   "email_task_due_reminder": true, "email_task_overdue": true,
+                   "email_task_comment": true, "email_task_mention": true,
+                   "email_comment_deleted": false, "email_task_escalated": true
+                 }}
+                """.trimIndent(),
+            ),
+        )
+
+        assertEquals(8, dto.notificationPreferences.size)
+        assertEquals(true, dto.notificationPreferences["email_task_assigned"])
+        assertEquals(false, dto.notificationPreferences["email_comment_deleted"])
+    }
+
+    @Test
+    fun `a payload without the switches leaves them to the cached copy`() {
+        // Empty rather than null so the seed can be skipped outright: a server or cached
+        // payload that omits the block must not wipe switches already stored.
+        val dto = requireNotNull(
+            moshi.adapter(UserDto::class.java).fromJson(
+                """{"id": 1, "name": "Admin", "email": "a@b.c", "roles": []}""",
+            ),
+        )
+
+        assertTrue(dto.notificationPreferences.isEmpty())
+    }
+
+    @Test
     fun `a deactivated account is carried through as inactive`() {
         val user = parse(
             """

@@ -9,6 +9,7 @@ import androidx.datastore.preferences.preferencesDataStore
 import androidx.security.crypto.EncryptedSharedPreferences
 import androidx.security.crypto.MasterKey
 import com.squareup.moshi.Moshi
+import com.squareup.moshi.Types
 import com.wmt.app.data.remote.SessionManager
 import com.wmt.app.data.remote.dto.UserDto
 import com.wmt.app.data.remote.dto.toDomain
@@ -44,6 +45,7 @@ class PreferencesManager @Inject constructor(
         val SERVER_URL = stringPreferencesKey("server_url")
         val UNREAD_COUNT = intPreferencesKey("unread_count")
         val USER_JSON = stringPreferencesKey("user_json")
+        val NOTIF_PREFS = stringPreferencesKey("notif_prefs")
         val THEME_MODE = stringPreferencesKey("theme_mode")
         val MAX_UPLOAD_MB = intPreferencesKey("max_upload_mb")
     }
@@ -56,6 +58,10 @@ class PreferencesManager @Inject constructor(
         EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM,
     )
 
+    private val mapAdapter =
+        moshi.adapter<Map<String, Boolean>>(
+            Types.newParameterizedType(Map::class.java, String::class.java, java.lang.Boolean::class.java),
+        )
     private val userAdapter = moshi.adapter(UserDto::class.java)
 
     private val _token = MutableStateFlow(securePrefs.getString(TOKEN_KEY, null))
@@ -102,6 +108,11 @@ class PreferencesManager @Inject constructor(
         p[Keys.USER_JSON]?.let { runCatching { userAdapter.fromJson(it)?.toDomain() }.getOrNull() }
     }
 
+    /** Email notification switches, keyed as the server keys them. Empty until first read. */
+    val notificationPreferences: Flow<Map<String, Boolean>> = prefs.map { p ->
+        p[Keys.NOTIF_PREFS]?.let { runCatching { mapAdapter.fromJson(it) }.getOrNull() } ?: emptyMap()
+    }
+
     private suspend fun readServerUrl(): String? = serverUrl.first()
 
     suspend fun saveServerUrl(url: String) {
@@ -144,6 +155,10 @@ class PreferencesManager @Inject constructor(
         context.dataStore.edit { it[Keys.USER_JSON] = userAdapter.toJson(user) }
     }
 
+    suspend fun saveNotificationPreferences(prefsMap: Map<String, Boolean>) {
+        context.dataStore.edit { it[Keys.NOTIF_PREFS] = mapAdapter.toJson(prefsMap) }
+    }
+
     suspend fun saveUnreadCount(count: Int) {
         context.dataStore.edit { it[Keys.UNREAD_COUNT] = count.coerceAtLeast(0) }
     }
@@ -160,8 +175,7 @@ class PreferencesManager @Inject constructor(
         context.dataStore.edit { p ->
             p.remove(Keys.USER_JSON)
             p.remove(Keys.UNREAD_COUNT)
-            // Legacy key from the removed per-user notification preferences feature.
-            p.remove(stringPreferencesKey("notif_prefs"))
+            p.remove(Keys.NOTIF_PREFS)
         }
     }
 
