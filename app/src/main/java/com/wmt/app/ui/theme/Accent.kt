@@ -218,11 +218,11 @@ internal fun Hsl.toColor(): Color {
  * that is still readable, which keeps as much of the original colour as the
  * bar allows.
  */
-private fun Hsl.darkenUntilReadable(on: Color): Color =
+internal fun Hsl.darkenUntilReadable(on: Color): Color =
     walkUntilReadable(on, step = -0.01f, limit = 0.04f)
 
 /** The same walk upward, for an accent that has to read on a dark surface. */
-private fun Hsl.lightenUntilReadable(on: Color): Color =
+internal fun Hsl.lightenUntilReadable(on: Color): Color =
     walkUntilReadable(on, step = 0.01f, limit = 0.97f)
 
 private fun Hsl.walkUntilReadable(on: Color, step: Float, limit: Float): Color {
