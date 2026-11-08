@@ -49,6 +49,10 @@ import com.wmt.app.data.remote.dto.AmendTimeLogRequest
 import com.wmt.app.data.remote.dto.AmendmentResponse
 import com.wmt.app.data.remote.dto.ReviewAmendmentRequest
 import com.wmt.app.data.remote.dto.TaskDetailResponse
+import com.wmt.app.data.remote.dto.NotesResponse
+import com.wmt.app.data.remote.dto.NoteResponse
+import com.wmt.app.data.remote.dto.NoteWriteRequest
+import com.wmt.app.data.remote.dto.NoteSavedResponse
 import com.wmt.app.data.remote.dto.MyPersonnelResponse
 import com.wmt.app.data.remote.dto.PersonnelOverdueResponse
 import com.wmt.app.data.remote.dto.SharedRequestsResponse
@@ -554,4 +558,31 @@ interface WmtApi {
 
     @GET("api/my-personnel/overdue")
     suspend fun personnelOverdue(): PersonnelOverdueResponse
+
+    // ---- Notes ----
+
+    @GET("api/notes")
+    suspend fun notes(
+        @Query("scope") scope: String,
+        @Query("q") query: String? = null,
+        @Query("folder") folder: String? = null,
+    ): NotesResponse
+
+    @GET("api/notes/{id}")
+    suspend fun note(@Path("id") id: Int): NoteResponse
+
+    @POST("api/notes")
+    suspend fun createNote(@Body body: NoteWriteRequest): NoteResponse
+
+    @POST("api/notes/{id}/autosave")
+    suspend fun autosaveNote(@Path("id") id: Int, @Body body: NoteWriteRequest): NoteSavedResponse
+
+    @POST("api/notes/{id}/archive")
+    suspend fun archiveNote(@Path("id") id: Int): MessageResponse
+
+    @POST("api/notes/{id}/unarchive")
+    suspend fun unarchiveNote(@Path("id") id: Int): MessageResponse
+
+    @DELETE("api/notes/{id}")
+    suspend fun deleteNote(@Path("id") id: Int)
 }

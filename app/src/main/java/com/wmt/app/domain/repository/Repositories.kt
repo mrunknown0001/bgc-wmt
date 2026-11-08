@@ -26,6 +26,9 @@ import com.wmt.app.domain.model.ProjectDetail
 import com.wmt.app.domain.model.SearchResults
 import com.wmt.app.domain.model.Task
 import com.wmt.app.domain.model.TaskDetail
+import com.wmt.app.domain.model.Note
+import com.wmt.app.domain.model.NoteList
+import com.wmt.app.domain.model.NoteScope
 import com.wmt.app.domain.model.PersonnelUnit
 import com.wmt.app.domain.model.PersonnelOverdue
 import com.wmt.app.domain.model.ApprovalCover
@@ -416,3 +419,17 @@ interface PeopleRepository {
     /** Whether to offer My people at all: asked once per session, then remembered. */
     suspend fun headsAnyone(): Boolean
 }
+
+/** Personal and shared notes. Reading and writing only; sharing and folders are web work. */
+interface NoteRepository {
+    /** [folder] narrows Mine: a folder id, or "none" for unfiled. */
+    suspend fun notes(scope: NoteScope, query: String?, folder: String?): Resource<NoteList>
+    suspend fun note(id: Int): Resource<Note>
+    /** Creates a note and returns it; title and body are always sent together. */
+    suspend fun create(title: String, contentHtml: String): Resource<Note>
+    /** Saves title and body together, and returns when the server says it saved. */
+    suspend fun save(id: Int, title: String, contentHtml: String): Resource<String?>
+    suspend fun setArchived(id: Int, archived: Boolean): Resource<Unit>
+    suspend fun delete(id: Int): Resource<Unit>
+}
+

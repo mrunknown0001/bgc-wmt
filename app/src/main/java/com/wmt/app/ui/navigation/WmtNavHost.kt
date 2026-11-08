@@ -46,6 +46,8 @@ import com.wmt.app.ui.timesheet.TimeCorrectionsScreen
 import com.wmt.app.ui.approvals.ApprovalCoverScreen
 import com.wmt.app.ui.approvals.SharedRequestsScreen
 import com.wmt.app.ui.people.MyPeopleScreen
+import com.wmt.app.ui.notes.NoteScreen
+import com.wmt.app.ui.notes.NotesScreen
 import com.wmt.app.ui.approvals.ApprovalDetailScreen
 import com.wmt.app.ui.approvals.ApprovalFormScreen
 import com.wmt.app.ui.approvals.ApprovalTrailScreen
@@ -395,7 +397,20 @@ private fun MainNavHost(
                 onOpenTimeCorrections = { navController.navigate(MainRoutes.TIME_CORRECTIONS) },
                 onOpenApprovalCover = { navController.navigate(MainRoutes.APPROVAL_COVER) },
                 onOpenMyPeople = { navController.navigate(MainRoutes.MY_PEOPLE) },
+                onOpenNotes = { navController.navigate(MainRoutes.NOTES) },
             )
+        }
+        composable(MainRoutes.NOTES) {
+            NotesScreen(
+                onBack = { navController.popBackStack() },
+                onOpenNote = { id -> navController.navigate(MainRoutes.note(id)) },
+            )
+        }
+        composable(
+            route = MainRoutes.NOTE,
+            arguments = listOf(navArgument("noteId") { type = NavType.IntType }),
+        ) {
+            NoteScreen(onBack = { navController.popBackStack() })
         }
         composable(MainRoutes.MY_PEOPLE) {
             MyPeopleScreen(

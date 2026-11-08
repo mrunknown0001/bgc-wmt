@@ -131,3 +131,38 @@ fun PersonnelOverdueResponse.toDomain() = PersonnelOverdue(
     capped = capped,
 )
 
+
+fun NotesResponse.toDomain() = com.wmt.app.domain.model.NoteList(
+    notes = notes.map {
+        com.wmt.app.domain.model.NoteRow(
+            id = it.id,
+            title = it.title,
+            preview = it.snippet?.ifBlank { null } ?: it.excerpt?.ifBlank { null },
+            folderName = it.folder?.name,
+            owner = it.owner,
+            isMine = it.isMine,
+            canEdit = it.canEdit,
+            updatedAt = it.updatedAt,
+        )
+    },
+    folders = folders.map { com.wmt.app.domain.model.NoteFolder(it.id, it.name, it.depth, it.noteCount) },
+    counts = mapOf(
+        com.wmt.app.domain.model.NoteScope.MINE to counts.mine,
+        com.wmt.app.domain.model.NoteScope.SHARED to counts.shared,
+        com.wmt.app.domain.model.NoteScope.ARCHIVED to counts.archived,
+    ),
+)
+
+fun NoteDetailDto.toDomain() = com.wmt.app.domain.model.Note(
+    id = id,
+    title = title,
+    content = content,
+    owner = owner,
+    isMine = isMine,
+    archived = archived,
+    role = role,
+    canEdit = canEdit,
+    canArchive = canArchive,
+    canDelete = canDelete,
+    updatedAt = updatedAt,
+)

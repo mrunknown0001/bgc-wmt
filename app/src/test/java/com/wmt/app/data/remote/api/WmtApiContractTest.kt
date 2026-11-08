@@ -466,4 +466,42 @@ class WmtApiContractTest {
         api.personnelOverdue()
         assertSent("GET", "/api/my-personnel/overdue")
     }
+
+    // ---- Notes ----
+
+    @Test
+    fun `notes are listed by scope, read, created and saved`() = runTest {
+        api.notes(scope = "mine", query = "ladder", folder = "none")
+        assertSent("GET", "/api/notes?scope=mine&q=ladder&folder=none")
+
+        api.notes(scope = "shared")
+        assertSent("GET", "/api/notes?scope=shared")
+
+        api.note(5)
+        assertSent("GET", "/api/notes/5")
+
+        api.createNote(com.wmt.app.data.remote.dto.NoteWriteRequest(title = "Groceries", content = "<p>Milk</p>"))
+        assertSent("POST", "/api/notes")
+
+        api.archiveNote(5)
+        assertSent("POST", "/api/notes/5/archive")
+        api.unarchiveNote(5)
+        assertSent("POST", "/api/notes/5/unarchive")
+        api.deleteNote(5)
+        assertSent("DELETE", "/api/notes/5")
+    }
+
+    /**
+     * The server writes `content` whatever is sent, so a save without it would empty the
+     * note. Even an empty body is sent as "", never left out.
+     */
+    @Test
+    fun `a note save always carries its body, even an empty one`() = runTest {
+        api.autosaveNote(5, com.wmt.app.data.remote.dto.NoteWriteRequest(title = "Only a title", content = ""))
+
+        assertSent("POST", "/api/notes/5/autosave")
+        val body = lastBodyText()
+        assertTrue(body, body.contains("\"content\":\"\""))
+        assertTrue(body, body.contains("\"title\":\"Only a title\""))
+    }
 }

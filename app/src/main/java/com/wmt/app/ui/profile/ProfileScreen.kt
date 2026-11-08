@@ -68,6 +68,7 @@ fun ProfileScreen(
     onOpenTimeCorrections: (() -> Unit)? = null,
     onOpenApprovalCover: (() -> Unit)? = null,
     onOpenMyPeople: (() -> Unit)? = null,
+    onOpenNotes: (() -> Unit)? = null,
     viewModel: ProfileViewModel = hiltViewModel(),
 ) {
     val headsAnyone by viewModel.headsAnyone.collectAsStateWithLifecycle()
@@ -172,6 +173,7 @@ fun ProfileScreen(
                 onOpenApprovalCover = onOpenApprovalCover?.takeIf { state.user?.capabilities?.canAccessApprovals == true },
                 // Only for someone who heads or leads a unit; everyone else has nobody to look at.
                 onOpenMyPeople = onOpenMyPeople?.takeIf { headsAnyone },
+                onOpenNotes = onOpenNotes,
             )
 
             AppearanceSection(current = state.themeMode, onSelect = viewModel::setTheme)
@@ -469,8 +471,10 @@ private fun YourWorkSection(
     onOpenTimeCorrections: (() -> Unit)?,
     onOpenApprovalCover: (() -> Unit)?,
     onOpenMyPeople: (() -> Unit)? = null,
+    onOpenNotes: (() -> Unit)? = null,
 ) {
     val rows = listOfNotNull(
+        onOpenNotes?.let { Triple("Notes", "Your notes, and notes shared with you", it) },
         onOpenMyPeople?.let { Triple("My people", "The people you head or lead, and their overdue work", it) },
         onOpenSharedRequests?.let { Triple("Shared with me", "Approval requests people shared with you", it) },
         onOpenTimeCorrections?.let { Triple("Time corrections", "Corrections to decide, and ones you asked for", it) },
