@@ -26,6 +26,11 @@ import com.wmt.app.domain.model.ProjectDetail
 import com.wmt.app.domain.model.SearchResults
 import com.wmt.app.domain.model.Task
 import com.wmt.app.domain.model.TaskDetail
+import com.wmt.app.domain.model.ApprovalCover
+import com.wmt.app.domain.model.PersonOption
+import com.wmt.app.domain.model.TimeCorrections
+import com.wmt.app.domain.model.CorrectionTab
+import com.wmt.app.domain.model.SharedRequests
 import com.wmt.app.domain.model.PreviousValue
 import com.wmt.app.domain.model.Activity
 import com.wmt.app.domain.model.User
@@ -198,6 +203,13 @@ interface TaskRepository {
         beforeId: Int,
     ): Resource<Pair<List<Activity>, Boolean>>
 
+    /** The time corrections queue; the server settles which tab this user may see. */
+    suspend fun timeCorrections(
+        tab: CorrectionTab?,
+        status: String?,
+        page: Int,
+    ): Resource<TimeCorrections>
+
     /** Deletes one of your own comments. */
     suspend fun deleteComment(projectId: Int, taskId: Int, commentId: Int): Resource<Unit>
 
@@ -274,6 +286,9 @@ interface TodoRepository {
 interface ApprovalRepository {
     /** The two badge numbers. Deliberately cheap: safe to call on every foreground. */
     suspend fun counts(): Resource<ApprovalCounts>
+
+    /** Requests other people shared with this user, newest share first. */
+    suspend fun sharedRequests(page: Int, search: String? = null): Resource<SharedRequests>
 
     /** Requests awaiting this user's decision. */
     suspend fun myApprovals(page: Int = 1, search: String? = null): Resource<MyApprovals>
@@ -364,4 +379,27 @@ interface ApprovalRepository {
         body: String,
         attachmentUris: List<String> = emptyList(),
     ): Resource<ApprovalComment>
+}
+
+/**
+ * People, and arrangements about them: the picker, approval cover while someone is away,
+ * and (for heads and leaders) the people they are responsible for.
+ */
+interface PeopleRepository {
+    suspend fun peopleOptions(): Resource<List<PersonOption>>
+
+    /** The cover this user can see, and whether they may arrange it for other people. */
+    suspend fun approvalCover(): Resource<Pair<List<ApprovalCover>, Boolean>>
+
+    /** Arranges cover; returns how many pending approvals it reached straight away. */
+    suspend fun createApprovalCover(
+        userId: Int,
+        delegateId: Int,
+        startsOn: String,
+        endsOn: String?,
+        reason: String?,
+    ): Resource<Int>
+
+    /** Ends cover; returns how many pending approvals the stand-in was taken off. */
+    suspend fun removeApprovalCover(id: Int): Resource<Int>
 }

@@ -49,6 +49,13 @@ import com.wmt.app.data.remote.dto.AmendTimeLogRequest
 import com.wmt.app.data.remote.dto.AmendmentResponse
 import com.wmt.app.data.remote.dto.ReviewAmendmentRequest
 import com.wmt.app.data.remote.dto.TaskDetailResponse
+import com.wmt.app.data.remote.dto.SharedRequestsResponse
+import com.wmt.app.data.remote.dto.DelegationsResponse
+import com.wmt.app.data.remote.dto.CreateDelegationRequest
+import com.wmt.app.data.remote.dto.CreateDelegationResponse
+import com.wmt.app.data.remote.dto.RemoveDelegationResponse
+import com.wmt.app.data.remote.dto.PeopleOptionsResponse
+import com.wmt.app.data.remote.dto.TimeCorrectionsResponse
 import com.wmt.app.data.remote.dto.PaginatedActivitiesResponse
 import com.wmt.app.data.remote.dto.PreviousValueResponse
 import com.wmt.app.data.remote.dto.CustomFieldValuesRequest
@@ -507,4 +514,35 @@ interface WmtApi {
         @Part("body") body: RequestBody,
         @Part attachments: List<MultipartBody.Part>,
     ): ApprovalCommentResponse
+
+    // ---- Mirrors of web pages (WMT 54a6ae4) ----
+
+    /** Approval requests other people shared with me; 15 a page. */
+    @GET("api/shared-requests")
+    suspend fun sharedRequests(
+        @Query("page") page: Int = 1,
+        @Query("search") search: String? = null,
+    ): SharedRequestsResponse
+
+    /** Cover for approvers who are away: mine, ones naming me, or all for manage-users. */
+    @GET("api/approval-delegations")
+    suspend fun approvalCover(): DelegationsResponse
+
+    @POST("api/approval-delegations")
+    suspend fun createApprovalCover(@Body body: CreateDelegationRequest): CreateDelegationResponse
+
+    @DELETE("api/approval-delegations/{id}")
+    suspend fun removeApprovalCover(@Path("id") id: Int): RemoveDelegationResponse
+
+    /** Active people, for pickers. */
+    @GET("api/people-options")
+    suspend fun peopleOptions(): PeopleOptionsResponse
+
+    /** The time corrections queue: "to_decide" or "mine", by status. */
+    @GET("api/time-corrections")
+    suspend fun timeCorrections(
+        @Query("tab") tab: String? = null,
+        @Query("status") status: String? = null,
+        @Query("page") page: Int = 1,
+    ): TimeCorrectionsResponse
 }

@@ -421,4 +421,40 @@ class WmtApiContractTest {
         val names = WmtApi::class.java.declaredMethods.map { it.name }
         assertTrue(names.none { it in setOf("createProject", "updateProject", "deleteProject") })
     }
+
+    // ---- Mirrors of web pages ----
+
+    @Test
+    fun `shared requests, the corrections queue and the people picker are plain gets`() = runTest {
+        api.sharedRequests(page = 2)
+        assertSent("GET", "/api/shared-requests?page=2")
+
+        api.timeCorrections(tab = "to_decide", status = "all", page = 1)
+        assertSent("GET", "/api/time-corrections?tab=to_decide&status=all&page=1")
+
+        api.timeCorrections()
+        assertSent("GET", "/api/time-corrections?page=1")
+
+        api.peopleOptions()
+        assertSent("GET", "/api/people-options")
+    }
+
+    @Test
+    fun `approval cover is listed, created with snake case fields and ended by id`() = runTest {
+        api.approvalCover()
+        assertSent("GET", "/api/approval-delegations")
+
+        api.createApprovalCover(
+            com.wmt.app.data.remote.dto.CreateDelegationRequest(
+                userId = 12, delegateId = 40, startsOn = "2026-11-10", endsOn = null, reason = "Leave",
+            ),
+        )
+        assertSent("POST", "/api/approval-delegations")
+        val body = lastBodyText()
+        listOf("\"user_id\":12", "\"delegate_id\":40", "\"starts_on\":\"2026-11-10\"", "\"reason\":\"Leave\"")
+            .forEach { assertTrue(body, body.contains(it)) }
+
+        api.removeApprovalCover(3)
+        assertSent("DELETE", "/api/approval-delegations/3")
+    }
 }

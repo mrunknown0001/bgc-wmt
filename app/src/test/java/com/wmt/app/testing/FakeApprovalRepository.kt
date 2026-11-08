@@ -122,6 +122,9 @@ class FakeApprovalRepository : ApprovalRepository {
 
     override suspend fun counts(): Resource<ApprovalCounts> = TODO("not used")
 
+    override suspend fun sharedRequests(page: Int, search: String?): Resource<com.wmt.app.domain.model.SharedRequests> =
+        TODO("not used")
+
     override suspend fun myApprovals(page: Int, search: String?): Resource<MyApprovals> =
         TODO("not used")
 

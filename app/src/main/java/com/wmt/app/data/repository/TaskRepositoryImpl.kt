@@ -22,6 +22,8 @@ import com.wmt.app.domain.model.TaskTimesheet
 import com.wmt.app.domain.model.Task
 import com.wmt.app.domain.model.TaskClock
 import com.wmt.app.domain.model.TaskDetail
+import com.wmt.app.domain.model.CorrectionTab
+import com.wmt.app.domain.model.TimeCorrections
 import com.wmt.app.data.remote.dto.CustomFieldValuesRequest
 import com.wmt.app.domain.model.PreviousValue
 import com.wmt.app.domain.model.Activity
@@ -276,6 +278,14 @@ class TaskRepositoryImpl @Inject constructor(
             api.olderActivities(projectId, taskId, beforeId)
         }
         response.activities.map { it.toDomain() } to response.hasMore
+    }
+
+    override suspend fun timeCorrections(
+        tab: CorrectionTab?,
+        status: String?,
+        page: Int,
+    ): Resource<TimeCorrections> = safeApiCall(moshi) {
+        api.timeCorrections(tab = tab?.raw, status = status, page = page).toDomain()
     }
 
     override suspend fun deleteComment(projectId: Int, taskId: Int, commentId: Int): Resource<Unit> =

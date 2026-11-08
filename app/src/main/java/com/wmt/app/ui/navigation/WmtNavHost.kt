@@ -42,6 +42,9 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.wmt.app.domain.model.NotificationTarget
 import com.wmt.app.fcm.InAppMessage
+import com.wmt.app.ui.timesheet.TimeCorrectionsScreen
+import com.wmt.app.ui.approvals.ApprovalCoverScreen
+import com.wmt.app.ui.approvals.SharedRequestsScreen
 import com.wmt.app.ui.approvals.ApprovalDetailScreen
 import com.wmt.app.ui.approvals.ApprovalFormScreen
 import com.wmt.app.ui.approvals.ApprovalTrailScreen
@@ -325,6 +328,7 @@ private fun MainNavHost(
                 },
                 onNewRequest = { navController.navigate(MainRoutes.APPROVAL_NEW) },
                 onOpenTrail = { navController.navigate(MainRoutes.APPROVAL_TRAIL) },
+                onOpenShared = { navController.navigate(MainRoutes.SHARED_REQUESTS) },
             )
         }
         composable(
@@ -386,7 +390,27 @@ private fun MainNavHost(
                 onChangeServer = {},
                 onLoggedOut = {},
                 onBack = { navController.popBackStack() },
+                onOpenSharedRequests = { navController.navigate(MainRoutes.SHARED_REQUESTS) },
+                onOpenTimeCorrections = { navController.navigate(MainRoutes.TIME_CORRECTIONS) },
+                onOpenApprovalCover = { navController.navigate(MainRoutes.APPROVAL_COVER) },
             )
+        }
+        composable(MainRoutes.SHARED_REQUESTS) {
+            SharedRequestsScreen(
+                onBack = { navController.popBackStack() },
+                onOpenRequest = { projectId, requestId ->
+                    navController.navigate(MainRoutes.approvalDetail(projectId, requestId))
+                },
+            )
+        }
+        composable(MainRoutes.TIME_CORRECTIONS) {
+            TimeCorrectionsScreen(
+                onBack = { navController.popBackStack() },
+                onOpenTask = { projectId, taskId -> navController.navigate(MainRoutes.taskDetail(projectId, taskId)) },
+            )
+        }
+        composable(MainRoutes.APPROVAL_COVER) {
+            ApprovalCoverScreen(onBack = { navController.popBackStack() })
         }
 
         composable(
