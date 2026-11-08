@@ -37,6 +37,15 @@ object MainRoutes {
     const val APPROVAL_NEW = "approval/new"
     const val APPROVAL_TRAIL = "approval/trail"
     const val TIMESHEET = "task/{taskId}/time-logs"
+    const val SHARED_REQUESTS = "approvals/shared"
+    const val TIME_CORRECTIONS = "time-corrections"
+    const val APPROVAL_COVER = "approvals/cover"
+    const val MY_PEOPLE = "people"
+    const val NOTES = "notes"
+    const val NOTE = "note/{noteId}"
+
+    /** 0 opens a new, not yet created note. */
+    fun note(noteId: Int) = "note/$noteId"
 
     /** One route for both raising and editing; requestId 0 means a new request. */
     const val APPROVAL_FORM = "approval/form/{projectId}?requestId={requestId}"

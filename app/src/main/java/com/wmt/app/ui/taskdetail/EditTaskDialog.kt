@@ -25,6 +25,7 @@ import com.wmt.app.domain.model.TaskStatus
 import com.wmt.app.domain.model.UserSummary
 import com.wmt.app.ui.components.CollaboratorPicker
 import com.wmt.app.ui.components.DatePickerField
+import com.wmt.app.ui.components.RestrictionNotice
 import com.wmt.app.ui.components.DropdownField
 import com.wmt.app.ui.components.RecurrenceFields
 
@@ -32,6 +33,12 @@ import com.wmt.app.ui.components.RecurrenceFields
 fun EditTaskDialog(
     task: Task,
     members: List<UserSummary>,
+    /**
+     * The server's answer to "may this person reassign the task or move its dates". An
+     * assignee may edit their task but not hand it on; without this the picker was
+     * offered and the change silently dropped on save.
+     */
+    canChangeAssignmentAndDates: Boolean = true,
     saving: Boolean,
     error: String?,
     onDismiss: () -> Unit,
@@ -115,10 +122,26 @@ fun EditTaskDialog(
                         selected = assignee,
                         optionLabel = { it?.name ?: "Unassigned" },
                         onSelected = { assignee = it },
+                        enabled = canChangeAssignmentAndDates,
                     )
                 }
-                DatePickerField(label = "Due date", value = dueDate, onChange = { dueDate = it })
-                DatePickerField(label = "Start date", value = startDate, onChange = { startDate = it })
+                DatePickerField(
+                    label = "Due date",
+                    value = dueDate,
+                    onChange = { dueDate = it },
+                    enabled = canChangeAssignmentAndDates,
+                )
+                DatePickerField(
+                    label = "Start date",
+                    value = startDate,
+                    onChange = { startDate = it },
+                    enabled = canChangeAssignmentAndDates,
+                )
+                if (!canChangeAssignmentAndDates) {
+                    RestrictionNotice(
+                        "Only the project owner, or someone who manages tasks, can change who this is assigned to or its dates.",
+                    )
+                }
                 RecurrenceFields(
                     frequency = recurrenceFrequency,
                     interval = recurrenceInterval,

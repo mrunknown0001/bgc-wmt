@@ -28,7 +28,6 @@ import com.wmt.app.data.remote.dto.SuccessResponse
 import com.wmt.app.data.remote.dto.TodoResponse
 import com.wmt.app.data.remote.dto.TodosResponse
 import com.wmt.app.data.remote.dto.UpdateTodoRequest
-import com.wmt.app.data.remote.dto.CreateProjectRequest
 import com.wmt.app.data.remote.dto.CreateTaskRequest
 import com.wmt.app.data.remote.dto.DashboardDto
 import com.wmt.app.data.remote.dto.DeviceTokenRequest
@@ -45,12 +44,31 @@ import com.wmt.app.data.remote.dto.TaskClockDto
 import com.wmt.app.data.remote.dto.MyTasksResponse
 import com.wmt.app.data.remote.dto.ProjectDetailResponse
 import com.wmt.app.data.remote.dto.ProjectDto
-import com.wmt.app.data.remote.dto.ProjectResponse
 import com.wmt.app.data.remote.dto.AddTimeLogRequest
 import com.wmt.app.data.remote.dto.AmendTimeLogRequest
 import com.wmt.app.data.remote.dto.AmendmentResponse
 import com.wmt.app.data.remote.dto.ReviewAmendmentRequest
 import com.wmt.app.data.remote.dto.TaskDetailResponse
+import com.wmt.app.data.remote.dto.ReorderTodosRequest
+import com.wmt.app.data.remote.dto.TagsResponse
+import com.wmt.app.data.remote.dto.SetTagsRequest
+import com.wmt.app.data.remote.dto.NotesResponse
+import com.wmt.app.data.remote.dto.NoteResponse
+import com.wmt.app.data.remote.dto.NoteWriteRequest
+import com.wmt.app.data.remote.dto.NoteSavedResponse
+import com.wmt.app.data.remote.dto.MyPersonnelResponse
+import com.wmt.app.data.remote.dto.PersonnelOverdueResponse
+import com.wmt.app.data.remote.dto.SharedRequestsResponse
+import com.wmt.app.data.remote.dto.DelegationsResponse
+import com.wmt.app.data.remote.dto.CreateDelegationRequest
+import com.wmt.app.data.remote.dto.CreateDelegationResponse
+import com.wmt.app.data.remote.dto.RemoveDelegationResponse
+import com.wmt.app.data.remote.dto.PeopleOptionsResponse
+import com.wmt.app.data.remote.dto.TimeCorrectionsResponse
+import com.wmt.app.data.remote.dto.PaginatedActivitiesResponse
+import com.wmt.app.data.remote.dto.PreviousValueResponse
+import com.wmt.app.data.remote.dto.CustomFieldValuesRequest
+import com.wmt.app.data.remote.dto.CustomFieldValuesResponse
 import com.wmt.app.data.remote.dto.TimeLogDeletedResponse
 import com.wmt.app.data.remote.dto.TimeLogsResponse
 import com.wmt.app.data.remote.dto.TaskDto
@@ -116,14 +134,8 @@ interface WmtApi {
     @GET("api/projects")
     suspend fun projects(@Query("search") search: String? = null): ApiList<ProjectDto>
 
-    @POST("api/projects")
-    suspend fun createProject(@Body body: CreateProjectRequest): ProjectResponse
-
-    @PUT("api/projects/{id}")
-    suspend fun updateProject(@Path("id") id: Int, @Body body: CreateProjectRequest): ProjectResponse
-
-    @DELETE("api/projects/{id}")
-    suspend fun deleteProject(@Path("id") id: Int)
+    // There is no POST/PUT/DELETE for projects in the API, deliberately: creating and
+    // setting up a project is web work. The app once declared all three, and each 404'd.
 
     @GET("api/projects/{id}")
     suspend fun projectDetail(@Path("id") id: Int): ProjectDetailResponse
@@ -149,6 +161,17 @@ interface WmtApi {
 
     @DELETE("api/projects/{projectId}/tasks/{taskId}")
     suspend fun deleteTask(@Path("projectId") projectId: Int, @Path("taskId") taskId: Int)
+
+    /** Your own comment only; anyone else's is a 403. Answers 204. */
+    @DELETE("api/projects/{projectId}/tasks/{taskId}/comments/{commentId}")
+    suspend fun deleteComment(
+        @Path("projectId") projectId: Int,
+        @Path("taskId") taskId: Int,
+        @Path("commentId") commentId: Int,
+    )
+
+    @DELETE("api/tasks/{taskId}/comments/{commentId}")
+    suspend fun deletePersonalComment(@Path("taskId") taskId: Int, @Path("commentId") commentId: Int)
 
     @PATCH("api/projects/{projectId}/tasks/{taskId}/patch")
     suspend fun patchTask(
@@ -326,6 +349,35 @@ interface WmtApi {
         @Query("limit") limit: Int = 20,
     ): PaginatedCommentsResponse
 
+    // The timeline pages by cursor, like comments: the oldest id already shown, newest first.
+
+    @GET("api/projects/{projectId}/tasks/{taskId}/activities")
+    suspend fun olderActivities(
+        @Path("projectId") projectId: Int,
+        @Path("taskId") taskId: Int,
+        @Query("before_id") beforeId: Int,
+        @Query("limit") limit: Int = 20,
+    ): PaginatedActivitiesResponse
+
+    @GET("api/tasks/{taskId}/activities")
+    suspend fun olderPersonalActivities(
+        @Path("taskId") taskId: Int,
+        @Query("before_id") beforeId: Int,
+        @Query("limit") limit: Int = 20,
+    ): PaginatedActivitiesResponse
+
+    /** The full text a custom field change replaced, for a row with has_previous_value. */
+    @GET("api/task-activities/{activityId}/previous-value")
+    suspend fun previousValue(@Path("activityId") activityId: Int): PreviousValueResponse
+
+    /** Changed fields only; a locked field the viewer may not change is a 422 naming it. */
+    @PUT("api/projects/{projectId}/tasks/{taskId}/custom-fields")
+    suspend fun saveCustomFields(
+        @Path("projectId") projectId: Int,
+        @Path("taskId") taskId: Int,
+        @Body body: CustomFieldValuesRequest,
+    ): CustomFieldValuesResponse
+
     // ---- Personal to-dos ----
 
     @GET("api/personal-todos")
@@ -345,6 +397,23 @@ interface WmtApi {
 
     @DELETE("api/personal-todos/clear-completed")
     suspend fun clearCompletedTodos(): SuccessResponse
+
+    @DELETE("api/personal-todos/clear-all")
+    suspend fun clearAllTodos(): SuccessResponse
+
+    /** Positions are the order of [body]'s ids. */
+    @POST("api/personal-todos/reorder")
+    suspend fun reorderTodos(@Body body: ReorderTodosRequest): SuccessResponse
+
+    // ---- Tags ----
+
+    /** Every tag in use, with how often, for suggestions. */
+    @GET("api/tags")
+    suspend fun tags(): TagsResponse
+
+    /** Sets a task's tags to exactly these names (at most 20). Needs the right to edit the task. */
+    @PUT("api/tags/task/{taskId}")
+    suspend fun setTaskTags(@Path("taskId") taskId: Int, @Body body: SetTagsRequest): TagsResponse
 
     // ---- Approvals ----
     // Projects are read-only here: creating and configuring one stays on the web.
@@ -471,4 +540,69 @@ interface WmtApi {
         @Part("body") body: RequestBody,
         @Part attachments: List<MultipartBody.Part>,
     ): ApprovalCommentResponse
+
+    // ---- Mirrors of web pages (WMT 54a6ae4) ----
+
+    /** Approval requests other people shared with me; 15 a page. */
+    @GET("api/shared-requests")
+    suspend fun sharedRequests(
+        @Query("page") page: Int = 1,
+        @Query("search") search: String? = null,
+    ): SharedRequestsResponse
+
+    /** Cover for approvers who are away: mine, ones naming me, or all for manage-users. */
+    @GET("api/approval-delegations")
+    suspend fun approvalCover(): DelegationsResponse
+
+    @POST("api/approval-delegations")
+    suspend fun createApprovalCover(@Body body: CreateDelegationRequest): CreateDelegationResponse
+
+    @DELETE("api/approval-delegations/{id}")
+    suspend fun removeApprovalCover(@Path("id") id: Int): RemoveDelegationResponse
+
+    /** Active people, for pickers. */
+    @GET("api/people-options")
+    suspend fun peopleOptions(): PeopleOptionsResponse
+
+    /** The time corrections queue: "to_decide" or "mine", by status. */
+    @GET("api/time-corrections")
+    suspend fun timeCorrections(
+        @Query("tab") tab: String? = null,
+        @Query("status") status: String? = null,
+        @Query("page") page: Int = 1,
+    ): TimeCorrectionsResponse
+
+    /** A head's or leader's people, by the org chart. 403 for anybody heading nothing. */
+    @GET("api/my-personnel")
+    suspend fun myPersonnel(): MyPersonnelResponse
+
+    @GET("api/my-personnel/overdue")
+    suspend fun personnelOverdue(): PersonnelOverdueResponse
+
+    // ---- Notes ----
+
+    @GET("api/notes")
+    suspend fun notes(
+        @Query("scope") scope: String,
+        @Query("q") query: String? = null,
+        @Query("folder") folder: String? = null,
+    ): NotesResponse
+
+    @GET("api/notes/{id}")
+    suspend fun note(@Path("id") id: Int): NoteResponse
+
+    @POST("api/notes")
+    suspend fun createNote(@Body body: NoteWriteRequest): NoteResponse
+
+    @POST("api/notes/{id}/autosave")
+    suspend fun autosaveNote(@Path("id") id: Int, @Body body: NoteWriteRequest): NoteSavedResponse
+
+    @POST("api/notes/{id}/archive")
+    suspend fun archiveNote(@Path("id") id: Int): MessageResponse
+
+    @POST("api/notes/{id}/unarchive")
+    suspend fun unarchiveNote(@Path("id") id: Int): MessageResponse
+
+    @DELETE("api/notes/{id}")
+    suspend fun deleteNote(@Path("id") id: Int)
 }

@@ -366,4 +366,162 @@ class WmtApiContractTest {
     companion object {
         private const val BASE = "https://wmt-dev.bfcgroup.ph/"
     }
+
+    // ---- Task detail: history, previous text, custom fields ----
+
+    @Test
+    fun `older activity pages by cursor on both kinds of task`() = runTest {
+        api.olderActivities(projectId = 3, taskId = 41, beforeId = 900)
+        assertSent("GET", "/api/projects/3/tasks/41/activities?before_id=900&limit=20")
+
+        api.olderPersonalActivities(taskId = 41, beforeId = 900)
+        assertSent("GET", "/api/tasks/41/activities?before_id=900&limit=20")
+    }
+
+    @Test
+    fun `previous text is fetched by activity id`() = runTest {
+        api.previousValue(activityId = 77)
+
+        assertSent("GET", "/api/task-activities/77/previous-value")
+    }
+
+    @Test
+    fun `custom field values are put as a values object keyed by field id`() = runTest {
+        api.saveCustomFields(
+            projectId = 3,
+            taskId = 41,
+            body = com.wmt.app.data.remote.dto.CustomFieldValuesRequest(
+                mapOf("7" to 71, "12" to listOf(120, 121), "5" to null),
+            ),
+        )
+
+        assertSent("PUT", "/api/projects/3/tasks/41/custom-fields")
+        val body = lastBodyText()
+        assertTrue(body, body.contains("\"values\""))
+        assertTrue(body, body.contains("\"7\":71"))
+        assertTrue(body, body.contains("\"12\":[120,121]"))
+        // The trap the repository works around: a null entry is dropped from the body,
+        // so "clear field 5" would never reach the server as a null.
+        assertTrue(body, !body.contains("\"5\""))
+    }
+
+    @Test
+    fun `deleting a comment names the task it is on, on both kinds of task`() = runTest {
+        // The task in the path is checked against the comment on the server (a nested URL
+        // is two lookups), so it has to be the comment's own task, not any task.
+        api.deleteComment(projectId = 3, taskId = 41, commentId = 9)
+        assertSent("DELETE", "/api/projects/3/tasks/41/comments/9")
+
+        api.deletePersonalComment(taskId = 41, commentId = 9)
+        assertSent("DELETE", "/api/tasks/41/comments/9")
+    }
+
+    @Test
+    fun `the project write calls are gone, because the server has none`() {
+        val names = WmtApi::class.java.declaredMethods.map { it.name }
+        assertTrue(names.none { it in setOf("createProject", "updateProject", "deleteProject") })
+    }
+
+    // ---- Mirrors of web pages ----
+
+    @Test
+    fun `shared requests, the corrections queue and the people picker are plain gets`() = runTest {
+        api.sharedRequests(page = 2)
+        assertSent("GET", "/api/shared-requests?page=2")
+
+        api.timeCorrections(tab = "to_decide", status = "all", page = 1)
+        assertSent("GET", "/api/time-corrections?tab=to_decide&status=all&page=1")
+
+        api.timeCorrections()
+        assertSent("GET", "/api/time-corrections?page=1")
+
+        api.peopleOptions()
+        assertSent("GET", "/api/people-options")
+    }
+
+    @Test
+    fun `approval cover is listed, created with snake case fields and ended by id`() = runTest {
+        api.approvalCover()
+        assertSent("GET", "/api/approval-delegations")
+
+        api.createApprovalCover(
+            com.wmt.app.data.remote.dto.CreateDelegationRequest(
+                userId = 12, delegateId = 40, startsOn = "2026-11-10", endsOn = null, reason = "Leave",
+            ),
+        )
+        assertSent("POST", "/api/approval-delegations")
+        val body = lastBodyText()
+        listOf("\"user_id\":12", "\"delegate_id\":40", "\"starts_on\":\"2026-11-10\"", "\"reason\":\"Leave\"")
+            .forEach { assertTrue(body, body.contains(it)) }
+
+        api.removeApprovalCover(3)
+        assertSent("DELETE", "/api/approval-delegations/3")
+    }
+
+    @Test
+    fun `my people and their overdue work are plain gets`() = runTest {
+        api.myPersonnel()
+        assertSent("GET", "/api/my-personnel")
+
+        api.personnelOverdue()
+        assertSent("GET", "/api/my-personnel/overdue")
+    }
+
+    // ---- Notes ----
+
+    @Test
+    fun `notes are listed by scope, read, created and saved`() = runTest {
+        api.notes(scope = "mine", query = "ladder", folder = "none")
+        assertSent("GET", "/api/notes?scope=mine&q=ladder&folder=none")
+
+        api.notes(scope = "shared")
+        assertSent("GET", "/api/notes?scope=shared")
+
+        api.note(5)
+        assertSent("GET", "/api/notes/5")
+
+        api.createNote(com.wmt.app.data.remote.dto.NoteWriteRequest(title = "Groceries", content = "<p>Milk</p>"))
+        assertSent("POST", "/api/notes")
+
+        api.archiveNote(5)
+        assertSent("POST", "/api/notes/5/archive")
+        api.unarchiveNote(5)
+        assertSent("POST", "/api/notes/5/unarchive")
+        api.deleteNote(5)
+        assertSent("DELETE", "/api/notes/5")
+    }
+
+    /**
+     * The server writes `content` whatever is sent, so a save without it would empty the
+     * note. Even an empty body is sent as "", never left out.
+     */
+    @Test
+    fun `a note save always carries its body, even an empty one`() = runTest {
+        api.autosaveNote(5, com.wmt.app.data.remote.dto.NoteWriteRequest(title = "Only a title", content = ""))
+
+        assertSent("POST", "/api/notes/5/autosave")
+        val body = lastBodyText()
+        assertTrue(body, body.contains("\"content\":\"\""))
+        assertTrue(body, body.contains("\"title\":\"Only a title\""))
+    }
+
+    @Test
+    fun `to-dos reorder by an id list and clear all by a dedicated route`() = runTest {
+        api.reorderTodos(com.wmt.app.data.remote.dto.ReorderTodosRequest(listOf(3, 1, 2)))
+        assertSent("POST", "/api/personal-todos/reorder")
+        assertTrue(lastBodyText().contains("\"ids\":[3,1,2]"))
+
+        api.clearAllTodos()
+        assertSent("DELETE", "/api/personal-todos/clear-all")
+    }
+
+    @Test
+    fun `tags are suggested from a list and set on a task by name`() = runTest {
+        api.tags()
+        assertSent("GET", "/api/tags")
+
+        api.setTaskTags(41, com.wmt.app.data.remote.dto.SetTagsRequest(listOf("fire", "urgent")))
+        assertSent("PUT", "/api/tags/task/41")
+        assertTrue(lastBodyText().contains("\"tags\":[\"fire\",\"urgent\"]"))
+    }
 }

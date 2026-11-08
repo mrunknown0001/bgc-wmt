@@ -78,6 +78,7 @@ fun DatePickerField(
     value: String?,
     onChange: (String?) -> Unit,
     modifier: Modifier = Modifier,
+    enabled: Boolean = true,
 ) {
     var showPicker by remember { mutableStateOf(false) }
 
@@ -85,10 +86,13 @@ fun DatePickerField(
         value = value ?: "",
         onValueChange = {},
         readOnly = true,
+        enabled = enabled,
         label = { Text(label) },
         placeholder = { Text("Optional") },
         trailingIcon = {
-            if (value != null) {
+            if (!enabled) {
+                // Shown, not offered: the value is still worth reading.
+            } else if (value != null) {
                 IconButton(onClick = { onChange(null) }) {
                     Icon(Icons.Default.Clear, contentDescription = "Clear date")
                 }

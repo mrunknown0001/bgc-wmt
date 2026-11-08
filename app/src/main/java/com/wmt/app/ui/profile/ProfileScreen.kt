@@ -63,8 +63,15 @@ fun ProfileScreen(
     onChangeServer: () -> Unit,
     onLoggedOut: () -> Unit,
     onBack: (() -> Unit)? = null,
+    /** Screens reached from here rather than the bottom bar; each is offered when wired. */
+    onOpenSharedRequests: (() -> Unit)? = null,
+    onOpenTimeCorrections: (() -> Unit)? = null,
+    onOpenApprovalCover: (() -> Unit)? = null,
+    onOpenMyPeople: (() -> Unit)? = null,
+    onOpenNotes: (() -> Unit)? = null,
     viewModel: ProfileViewModel = hiltViewModel(),
 ) {
+    val headsAnyone by viewModel.headsAnyone.collectAsStateWithLifecycle()
     val state by viewModel.state.collectAsStateWithLifecycle()
     val pushDiag by viewModel.pushDiag.collectAsStateWithLifecycle()
     val savingPrefs by viewModel.savingPreferences.collectAsStateWithLifecycle()
@@ -158,6 +165,16 @@ fun ProfileScreen(
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
             ProfileHeaderCard(user = state.user)
+
+            YourWorkSection(
+                onOpenSharedRequests = onOpenSharedRequests,
+                onOpenTimeCorrections = onOpenTimeCorrections,
+                // Cover is for approvers: only offered to someone who decides approvals.
+                onOpenApprovalCover = onOpenApprovalCover?.takeIf { state.user?.capabilities?.canAccessApprovals == true },
+                // Only for someone who heads or leads a unit; everyone else has nobody to look at.
+                onOpenMyPeople = onOpenMyPeople?.takeIf { headsAnyone },
+                onOpenNotes = onOpenNotes,
+            )
 
             AppearanceSection(current = state.themeMode, onSelect = viewModel::setTheme)
 
@@ -441,6 +458,37 @@ private fun LabeledRow(label: String, value: String) {
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
+    }
+}
+
+/**
+ * The screens that are not a bottom-bar tab. Profile is where the avatar leads, so it is
+ * where anything that belongs to "me" but not to a tab lives.
+ */
+@Composable
+private fun YourWorkSection(
+    onOpenSharedRequests: (() -> Unit)?,
+    onOpenTimeCorrections: (() -> Unit)?,
+    onOpenApprovalCover: (() -> Unit)?,
+    onOpenMyPeople: (() -> Unit)? = null,
+    onOpenNotes: (() -> Unit)? = null,
+) {
+    val rows = listOfNotNull(
+        onOpenNotes?.let { Triple("Notes", "Your notes, and notes shared with you", it) },
+        onOpenMyPeople?.let { Triple("My people", "The people you head or lead, and their overdue work", it) },
+        onOpenSharedRequests?.let { Triple("Shared with me", "Approval requests people shared with you", it) },
+        onOpenTimeCorrections?.let { Triple("Time corrections", "Corrections to decide, and ones you asked for", it) },
+        onOpenApprovalCover?.let { Triple("Approval cover", "Who acts on your approvals while you are away", it) },
+    )
+    if (rows.isEmpty()) return
+    Card(modifier = Modifier.fillMaxWidth()) {
+        rows.forEach { (title, subtitle, onClick) ->
+            ListItem(
+                headlineContent = { Text(title) },
+                supportingContent = { Text(subtitle) },
+                modifier = Modifier.clickable(onClick = onClick),
+            )
+        }
     }
 }
 

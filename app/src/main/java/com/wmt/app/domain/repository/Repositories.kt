@@ -26,6 +26,19 @@ import com.wmt.app.domain.model.ProjectDetail
 import com.wmt.app.domain.model.SearchResults
 import com.wmt.app.domain.model.Task
 import com.wmt.app.domain.model.TaskDetail
+import com.wmt.app.domain.model.Tag
+import com.wmt.app.domain.model.Note
+import com.wmt.app.domain.model.NoteList
+import com.wmt.app.domain.model.NoteScope
+import com.wmt.app.domain.model.PersonnelUnit
+import com.wmt.app.domain.model.PersonnelOverdue
+import com.wmt.app.domain.model.ApprovalCover
+import com.wmt.app.domain.model.PersonOption
+import com.wmt.app.domain.model.TimeCorrections
+import com.wmt.app.domain.model.CorrectionTab
+import com.wmt.app.domain.model.SharedRequests
+import com.wmt.app.domain.model.PreviousValue
+import com.wmt.app.domain.model.Activity
 import com.wmt.app.domain.model.User
 import com.wmt.app.util.Resource
 import kotlinx.coroutines.flow.Flow
@@ -194,6 +207,43 @@ interface TaskRepository {
         taskId: Int,
         beforeId: Int,
     ): Resource<Pair<List<Comment>, Boolean>>
+
+    /** One older page of the activity timeline, newest first, and whether more remain. */
+    suspend fun olderActivities(
+        projectId: Int,
+        taskId: Int,
+        beforeId: Int,
+    ): Resource<Pair<List<Activity>, Boolean>>
+
+    /** The time corrections queue; the server settles which tab this user may see. */
+    suspend fun timeCorrections(
+        tab: CorrectionTab?,
+        status: String?,
+        page: Int,
+    ): Resource<TimeCorrections>
+
+    /** Every tag name in use, for suggestions. */
+    suspend fun tagSuggestions(): Resource<List<String>>
+
+    /** Sets a task's tags to exactly [names]; returns them as the server stored them. */
+    suspend fun setTags(taskId: Int, names: List<String>): Resource<List<Tag>>
+
+    /** Deletes one of your own comments. */
+    suspend fun deleteComment(projectId: Int, taskId: Int, commentId: Int): Resource<Unit>
+
+    /** The full text a custom field change replaced. */
+    suspend fun previousValue(activityId: Int): Resource<PreviousValue>
+
+    /**
+     * Saves the changed custom field values in one request, and returns the server's
+     * automation warning if a rule the save triggered could not run. The caller reloads
+     * the task afterwards: the save also writes activity rows and may fire rules.
+     */
+    suspend fun saveCustomFields(
+        projectId: Int,
+        taskId: Int,
+        changes: Map<Int, Any?>,
+    ): Resource<String?>
 }
 
 interface ProjectRepository {
@@ -202,20 +252,6 @@ interface ProjectRepository {
     /** Global search across projects and tasks (GET /api/mobile/search). */
     suspend fun globalSearch(query: String): Resource<SearchResults>
     suspend fun projectDetail(projectId: Int): Resource<ProjectDetail>
-    suspend fun createProject(
-        name: String,
-        description: String?,
-        status: String,
-        dueDate: String?,
-    ): Resource<Project>
-    suspend fun updateProject(
-        projectId: Int,
-        name: String,
-        description: String?,
-        status: String,
-        dueDate: String?,
-    ): Resource<Project>
-    suspend fun deleteProject(projectId: Int): Resource<Unit>
 }
 
 interface NotificationRepository {
@@ -257,6 +293,9 @@ interface TodoRepository {
     suspend fun renameTodo(id: Int, title: String): Resource<PersonalTodo>
     suspend fun deleteTodo(id: Int): Resource<Unit>
     suspend fun clearCompleted(): Resource<Unit>
+    suspend fun clearAll(): Resource<Unit>
+    /** Saves the order: positions follow [ids]. */
+    suspend fun reorder(ids: List<Int>): Resource<Unit>
 }
 
 /**
@@ -268,6 +307,9 @@ interface TodoRepository {
 interface ApprovalRepository {
     /** The two badge numbers. Deliberately cheap: safe to call on every foreground. */
     suspend fun counts(): Resource<ApprovalCounts>
+
+    /** Requests other people shared with this user, newest share first. */
+    suspend fun sharedRequests(page: Int, search: String? = null): Resource<SharedRequests>
 
     /** Requests awaiting this user's decision. */
     suspend fun myApprovals(page: Int = 1, search: String? = null): Resource<MyApprovals>
@@ -359,3 +401,51 @@ interface ApprovalRepository {
         attachmentUris: List<String> = emptyList(),
     ): Resource<ApprovalComment>
 }
+
+/**
+ * People, and arrangements about them: the picker, approval cover while someone is away,
+ * and (for heads and leaders) the people they are responsible for.
+ */
+interface PeopleRepository {
+    suspend fun peopleOptions(): Resource<List<PersonOption>>
+
+    /** The cover this user can see, and whether they may arrange it for other people. */
+    suspend fun approvalCover(): Resource<Pair<List<ApprovalCover>, Boolean>>
+
+    /** Arranges cover; returns how many pending approvals it reached straight away. */
+    suspend fun createApprovalCover(
+        userId: Int,
+        delegateId: Int,
+        startsOn: String,
+        endsOn: String?,
+        reason: String?,
+    ): Resource<Int>
+
+    /** Ends cover; returns how many pending approvals the stand-in was taken off. */
+    suspend fun removeApprovalCover(id: Int): Resource<Int>
+
+    /**
+     * The people this user heads or leads. A Forbidden error means they head nothing --
+     * an answer, not a failure -- and is remembered for the session by [headsAnyone].
+     */
+    suspend fun myPersonnel(): Resource<List<PersonnelUnit>>
+
+    suspend fun personnelOverdue(): Resource<PersonnelOverdue>
+
+    /** Whether to offer My people at all: asked once per session, then remembered. */
+    suspend fun headsAnyone(): Boolean
+}
+
+/** Personal and shared notes. Reading and writing only; sharing and folders are web work. */
+interface NoteRepository {
+    /** [folder] narrows Mine: a folder id, or "none" for unfiled. */
+    suspend fun notes(scope: NoteScope, query: String?, folder: String?): Resource<NoteList>
+    suspend fun note(id: Int): Resource<Note>
+    /** Creates a note and returns it; title and body are always sent together. */
+    suspend fun create(title: String, contentHtml: String): Resource<Note>
+    /** Saves title and body together, and returns when the server says it saved. */
+    suspend fun save(id: Int, title: String, contentHtml: String): Resource<String?>
+    suspend fun setArchived(id: Int, archived: Boolean): Resource<Unit>
+    suspend fun delete(id: Int): Resource<Unit>
+}
+

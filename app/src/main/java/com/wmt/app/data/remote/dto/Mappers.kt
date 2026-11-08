@@ -19,6 +19,10 @@ import com.wmt.app.domain.model.ProjectSummary
 import com.wmt.app.domain.model.Task
 import com.wmt.app.domain.model.TaskDetail
 import com.wmt.app.domain.model.PausePreview
+import com.wmt.app.domain.model.PreviousValue
+import com.wmt.app.domain.model.Tag
+import com.wmt.app.domain.model.TaskLink
+import com.wmt.app.domain.model.TaskRules
 import com.wmt.app.domain.model.TaskClock
 import com.wmt.app.domain.model.TaskStatus
 import com.wmt.app.domain.model.Team
@@ -144,7 +148,14 @@ fun ActivityDto.toDomain() = Activity(
     description = description?.takeIf { it.isNotBlank() } ?: activityText(field, oldValue, newValue),
     actor = user?.toDomain(),
     createdAt = createdAt,
+    hasPreviousValue = hasPreviousValue,
 )
+
+fun PreviousValueResponse.toDomain() = PreviousValue(field = field, value = value, changedAt = changedAt)
+
+fun TaskLinkDto.toDomain() = TaskLink(id = id, title = title, status = status)
+
+fun TagDto.toDomain() = Tag(id = id, name = name)
 
 /** Builds a human-readable line for activity entries that only carry a field change. */
 private fun activityText(field: String?, old: String?, new: String?): String = when {
@@ -161,6 +172,21 @@ fun TaskDetailResponse.toDomain() = TaskDetail(
     members = members.map { it.toDomain() },
     subtasks = subtasks.map { it.toDomain() },
     clock = toClock(),
+    rules = TaskRules(
+        canEdit = canEdit,
+        canDelete = canDelete,
+        canEditCustomFields = canEditCustomFields,
+        canChangeAssignmentAndDates = canChangeAssignmentAndDates,
+        closeNeedsAttachment = closeNeedsAttachment,
+        subtaskRestriction = subtaskRestriction?.ifBlank { null },
+        isBlocked = isBlocked,
+        projectIsClosed = projectIsClosed,
+    ),
+    dependencies = dependencies.map { it.toDomain() },
+    dependents = dependents.map { it.toDomain() },
+    tags = tags.map { it.toDomain() },
+    customFields = buildTaskCustomFields(customFields, customFieldValues),
+    totalActivities = totalActivities,
 )
 
 /**

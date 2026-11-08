@@ -5,7 +5,6 @@ import com.wmt.app.data.local.db.dao.ProjectDao
 import com.wmt.app.data.local.db.toDomain
 import com.wmt.app.data.local.db.toEntity
 import com.wmt.app.data.remote.api.WmtApi
-import com.wmt.app.data.remote.dto.CreateProjectRequest
 import com.wmt.app.data.remote.dto.toDomain
 import com.wmt.app.data.remote.safeApiCall
 import com.wmt.app.domain.model.Project
@@ -55,41 +54,4 @@ class ProjectRepositoryImpl @Inject constructor(
 
     override suspend fun projectDetail(projectId: Int): Resource<ProjectDetail> =
         safeApiCall(moshi) { api.projectDetail(projectId).toDomain() }
-
-    override suspend fun createProject(
-        name: String,
-        description: String?,
-        status: String,
-        dueDate: String?,
-    ): Resource<Project> = safeApiCall(moshi) {
-        api.createProject(
-            CreateProjectRequest(
-                name = name,
-                description = description,
-                status = status,
-                dueDate = dueDate,
-            ),
-        ).project.toDomain()
-    }
-
-    override suspend fun updateProject(
-        projectId: Int,
-        name: String,
-        description: String?,
-        status: String,
-        dueDate: String?,
-    ): Resource<Project> = safeApiCall(moshi) {
-        api.updateProject(
-            projectId,
-            CreateProjectRequest(
-                name = name,
-                description = description,
-                status = status,
-                dueDate = dueDate,
-            ),
-        ).project.toDomain()
-    }
-
-    override suspend fun deleteProject(projectId: Int): Resource<Unit> =
-        safeApiCall(moshi) { api.deleteProject(projectId) }
 }

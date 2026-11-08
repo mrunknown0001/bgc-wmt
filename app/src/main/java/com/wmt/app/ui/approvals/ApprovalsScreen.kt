@@ -18,6 +18,7 @@ import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.History
 import androidx.compose.material.icons.rounded.Search
+import androidx.compose.material.icons.rounded.Share
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
@@ -72,6 +73,7 @@ fun ApprovalsScreen(
     onRequestClick: ((projectId: Int, requestId: Int) -> Unit)? = null,
     onNewRequest: (() -> Unit)? = null,
     onOpenTrail: (() -> Unit)? = null,
+    onOpenShared: (() -> Unit)? = null,
     viewModel: ApprovalsViewModel = hiltViewModel(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
@@ -132,6 +134,11 @@ fun ApprovalsScreen(
                                 Icons.Rounded.History,
                                 contentDescription = "Decision trail",
                             )
+                        }
+                    }
+                    if (onOpenShared != null) {
+                        IconButton(onClick = onOpenShared) {
+                            Icon(Icons.Rounded.Share, contentDescription = "Shared with me")
                         }
                     }
                     ProfileAvatarAction(user = currentUser, onClick = onOpenProfile)

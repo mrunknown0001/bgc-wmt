@@ -22,6 +22,13 @@ import com.wmt.app.domain.model.TaskTimesheet
 import com.wmt.app.domain.model.Task
 import com.wmt.app.domain.model.TaskClock
 import com.wmt.app.domain.model.TaskDetail
+import com.wmt.app.domain.model.Tag
+import com.wmt.app.domain.model.CorrectionTab
+import com.wmt.app.domain.model.TimeCorrections
+import com.wmt.app.data.remote.dto.CustomFieldValuesRequest
+import com.wmt.app.data.remote.dto.SetTagsRequest
+import com.wmt.app.domain.model.PreviousValue
+import com.wmt.app.domain.model.Activity
 import com.wmt.app.domain.repository.TaskRepository
 import com.wmt.app.util.Resource
 import kotlinx.coroutines.flow.Flow
@@ -260,6 +267,60 @@ class TaskRepositoryImpl @Inject constructor(
             api.olderComments(projectId, taskId, beforeId)
         }
         response.comments.map { it.toDomain() } to response.hasMore
+    }
+
+    override suspend fun olderActivities(
+        projectId: Int,
+        taskId: Int,
+        beforeId: Int,
+    ): Resource<Pair<List<Activity>, Boolean>> = safeApiCall(moshi) {
+        val response = if (isPersonal(projectId)) {
+            api.olderPersonalActivities(taskId, beforeId)
+        } else {
+            api.olderActivities(projectId, taskId, beforeId)
+        }
+        response.activities.map { it.toDomain() } to response.hasMore
+    }
+
+    override suspend fun timeCorrections(
+        tab: CorrectionTab?,
+        status: String?,
+        page: Int,
+    ): Resource<TimeCorrections> = safeApiCall(moshi) {
+        api.timeCorrections(tab = tab?.raw, status = status, page = page).toDomain()
+    }
+
+    override suspend fun tagSuggestions(): Resource<List<String>> =
+        safeApiCall(moshi) { api.tags().tags.map { it.name } }
+
+    override suspend fun setTags(taskId: Int, names: List<String>): Resource<List<Tag>> =
+        safeApiCall(moshi) { api.setTaskTags(taskId, SetTagsRequest(names)).tags.map { it.toDomain() } }
+
+    override suspend fun deleteComment(projectId: Int, taskId: Int, commentId: Int): Resource<Unit> =
+        safeApiCall(moshi) {
+            if (isPersonal(projectId)) {
+                api.deletePersonalComment(taskId, commentId)
+            } else {
+                api.deleteComment(projectId, taskId, commentId)
+            }
+        }
+
+    override suspend fun previousValue(activityId: Int): Resource<PreviousValue> =
+        safeApiCall(moshi) { api.previousValue(activityId).toDomain() }
+
+    override suspend fun saveCustomFields(
+        projectId: Int,
+        taskId: Int,
+        changes: Map<Int, Any?>,
+    ): Resource<String?> = safeApiCall(moshi) {
+        // Keys are strings on the wire; the server reads them as field ids. A cleared
+        // field goes as "" rather than null: Moshi leaves null entries out of a map, so a
+        // null would send no key at all and the old answer would quietly stay. The server
+        // reads "" and null alike as "clear this value".
+        val body = CustomFieldValuesRequest(
+            changes.entries.associate { (id, raw) -> id.toString() to (raw ?: "") },
+        )
+        api.saveCustomFields(projectId, taskId, body).automationWarning?.ifBlank { null }
     }
 
     private companion object {

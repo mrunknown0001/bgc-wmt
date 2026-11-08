@@ -1,6 +1,8 @@
 package com.wmt.app.di
 
 import com.wmt.app.data.repository.ApprovalRepositoryImpl
+import com.wmt.app.data.repository.PeopleRepositoryImpl
+import com.wmt.app.data.repository.NoteRepositoryImpl
 import com.wmt.app.data.repository.AuthRepositoryImpl
 import com.wmt.app.data.repository.DashboardRepositoryImpl
 import com.wmt.app.data.repository.NotificationRepositoryImpl
@@ -9,6 +11,8 @@ import com.wmt.app.data.repository.SettingsRepositoryImpl
 import com.wmt.app.data.repository.TaskRepositoryImpl
 import com.wmt.app.data.repository.TodoRepositoryImpl
 import com.wmt.app.domain.repository.ApprovalRepository
+import com.wmt.app.domain.repository.PeopleRepository
+import com.wmt.app.domain.repository.NoteRepository
 import com.wmt.app.domain.repository.AuthRepository
 import com.wmt.app.domain.repository.DashboardRepository
 import com.wmt.app.domain.repository.NotificationRepository
@@ -57,4 +61,12 @@ abstract class RepositoryModule {
     @Binds
     @Singleton
     abstract fun bindApprovalRepository(impl: ApprovalRepositoryImpl): ApprovalRepository
+
+    @Binds
+    @Singleton
+    abstract fun bindPeopleRepository(impl: PeopleRepositoryImpl): PeopleRepository
+
+    @Binds
+    @Singleton
+    abstract fun bindNoteRepository(impl: NoteRepositoryImpl): NoteRepository
 }

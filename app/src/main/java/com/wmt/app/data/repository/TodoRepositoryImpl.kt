@@ -4,6 +4,7 @@ import com.squareup.moshi.Moshi
 import com.wmt.app.data.remote.api.WmtApi
 import com.wmt.app.data.remote.dto.CreateTodoRequest
 import com.wmt.app.data.remote.dto.UpdateTodoRequest
+import com.wmt.app.data.remote.dto.ReorderTodosRequest
 import com.wmt.app.data.remote.dto.toDomain
 import com.wmt.app.data.remote.safeApiCall
 import com.wmt.app.domain.model.PersonalTodo
@@ -43,6 +44,18 @@ class TodoRepositoryImpl @Inject constructor(
     override suspend fun clearCompleted(): Resource<Unit> =
         safeApiCall(moshi) {
             api.clearCompletedTodos()
+            Unit
+        }
+
+    override suspend fun clearAll(): Resource<Unit> =
+        safeApiCall(moshi) {
+            api.clearAllTodos()
+            Unit
+        }
+
+    override suspend fun reorder(ids: List<Int>): Resource<Unit> =
+        safeApiCall(moshi) {
+            api.reorderTodos(ReorderTodosRequest(ids))
             Unit
         }
 }

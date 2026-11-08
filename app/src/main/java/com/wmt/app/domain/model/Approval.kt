@@ -270,3 +270,18 @@ sealed interface ApprovalFieldInput {
     /** multi_select option ids, or people user ids. */
     data class Selection(val ids: List<Int>) : ApprovalFieldInput
 }
+
+/**
+ * A stored value as something an editor can change, in the shape its type is sent back
+ * in. Shared by the approval form and the task's custom fields, which store values the
+ * same way, so a value read one way is never written back another.
+ */
+fun ApprovalFieldValue.toInput(field: ApprovalCustomField): ApprovalFieldInput =
+    when (field.typeEnum) {
+        ApprovalFieldType.MULTI_SELECT, ApprovalFieldType.PEOPLE ->
+            ApprovalFieldInput.Selection(optionIds)
+        ApprovalFieldType.SINGLE_SELECT -> ApprovalFieldInput.Text(optionId?.toString())
+        ApprovalFieldType.NUMBER -> ApprovalFieldInput.Text(number)
+        ApprovalFieldType.DATE, ApprovalFieldType.WEEK_OF_YEAR -> ApprovalFieldInput.Text(date)
+        else -> ApprovalFieldInput.Text(text)
+    }

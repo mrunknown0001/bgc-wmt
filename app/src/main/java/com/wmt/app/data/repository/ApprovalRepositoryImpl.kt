@@ -22,6 +22,7 @@ import com.wmt.app.domain.model.ApprovalTrailEntry
 import com.wmt.app.domain.model.MyApprovals
 import com.wmt.app.domain.model.MyRequests
 import com.wmt.app.domain.model.Page
+import com.wmt.app.domain.model.SharedRequests
 import com.wmt.app.domain.repository.ApprovalRepository
 import com.wmt.app.util.Resource
 import okhttp3.RequestBody
@@ -44,6 +45,9 @@ class ApprovalRepositoryImpl @Inject constructor(
 
     override suspend fun counts(): Resource<ApprovalCounts> =
         safeApiCall(moshi) { api.approvalCounts().toDomain() }
+
+    override suspend fun sharedRequests(page: Int, search: String?): Resource<SharedRequests> =
+        safeApiCall(moshi) { api.sharedRequests(page = page, search = search.orNullIfBlank()).toDomain() }
 
     override suspend fun myApprovals(page: Int, search: String?): Resource<MyApprovals> =
         safeApiCall(moshi) {

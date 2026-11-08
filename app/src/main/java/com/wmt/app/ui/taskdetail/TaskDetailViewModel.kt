@@ -4,13 +4,17 @@ import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.wmt.app.data.remote.RealtimeClient
+import com.wmt.app.domain.model.Activity
 import com.wmt.app.domain.model.Comment
+import com.wmt.app.domain.model.PreviousValue
 import com.wmt.app.domain.model.PausePreview
 import com.wmt.app.domain.model.TaskClock
 import com.wmt.app.domain.model.TaskDetail
 import com.wmt.app.domain.model.TaskStatus
+import com.wmt.app.domain.repository.AuthRepository
 import com.wmt.app.domain.repository.SettingsRepository
 import com.wmt.app.domain.repository.TaskRepository
+import com.wmt.app.util.AppError
 import com.wmt.app.util.Resource
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -40,7 +44,41 @@ data class TaskDetailUiState(
     val pausePreview: PausePreview? = null,
     /** Increments each time the user completes this task or a subtask — drives confetti. */
     val celebrations: Int = 0,
+    /** Activity rows paged in past the first 20, oldest last. */
+    val olderActivities: List<Activity> = emptyList(),
+    val loadingMoreActivities: Boolean = false,
+    /** Set once a page answers has_more = false, so the button stops being offered. */
+    val activitiesExhausted: Boolean = false,
+    /** The "previous text" sheet: which row it is for, and what came back. */
+    val previousValue: PreviousValueSheet? = null,
+    /** The custom field editor is open. */
+    val editingFields: Boolean = false,
+    val savingFields: Boolean = false,
+    /** The server's 422, keyed by its path ("values.12"). */
+    val fieldErrors: Map<String, List<String>> = emptyMap(),
+    /** A one-off line for a snackbar: an automation warning, or a field save that failed. */
+    val notice: String? = null,
+    /** Whose comments may be deleted from this screen: their own, as the server allows. */
+    val currentUserId: Int? = null,
+    /** A comment delete in flight, so its button waits rather than queueing presses. */
+    val deletingCommentId: Int? = null,
+    val editingTags: Boolean = false,
+    val savingTags: Boolean = false,
+    /** Tag names already in use, for suggestions; empty until the editor first opens. */
+    val tagSuggestions: List<String> = emptyList(),
 ) {
+    /** First page plus paged-in older rows, de-duplicated after a refresh. */
+    val allActivities: List<Activity>
+        get() {
+            val page = detail?.activities.orEmpty()
+            val oldestShown = page.minOfOrNull { it.id } ?: return page
+            return page + olderActivities.filter { it.id < oldestShown }
+        }
+
+    /** More history exists than is shown: the server's total says so, until a page says otherwise. */
+    val hasMoreActivities: Boolean
+        get() = !activitiesExhausted && (detail?.totalActivities ?: 0) > allActivities.size
+
     /** Initial page plus paged-in older comments, de-duplicated after refreshes. */
     val allComments: List<Comment>
         get() {
@@ -54,6 +92,7 @@ data class TaskDetailUiState(
 class TaskDetailViewModel @Inject constructor(
     private val repository: TaskRepository,
     private val settingsRepository: SettingsRepository,
+    private val authRepository: AuthRepository,
     private val realtimeClient: RealtimeClient,
     savedStateHandle: SavedStateHandle,
 ) : ViewModel() {
@@ -70,6 +109,9 @@ class TaskDetailViewModel @Inject constructor(
         viewModelScope.launch { realtimeClient.observeTask(taskId).collect { poll() } }
         // Keep the attachment-size validation in sync with the server's setting.
         viewModelScope.launch { settingsRepository.refreshAppSettings() }
+        viewModelScope.launch {
+            authRepository.currentUser.collect { user -> _state.update { it.copy(currentUserId = user?.id) } }
+        }
         viewModelScope.launch {
             settingsRepository.maxUploadSizeMb.collect { mb ->
                 _state.update { it.copy(maxUploadMb = mb) }
@@ -116,6 +158,151 @@ class TaskDetailViewModel @Inject constructor(
                 }
                 is Resource.Error -> _state.update {
                     it.copy(loadingMoreComments = false, error = result.error.message)
+                }
+                is Resource.Loading -> Unit
+            }
+        }
+    }
+
+    fun loadOlderActivities() {
+        val current = _state.value
+        if (current.loadingMoreActivities) return
+        val beforeId = current.allActivities.lastOrNull()?.id ?: return
+        _state.update { it.copy(loadingMoreActivities = true) }
+        viewModelScope.launch {
+            when (val result = repository.olderActivities(projectId, taskId, beforeId)) {
+                is Resource.Success -> _state.update {
+                    val (rows, hasMore) = result.data
+                    val known = it.allActivities.map { a -> a.id }.toSet()
+                    it.copy(
+                        loadingMoreActivities = false,
+                        olderActivities = it.olderActivities + rows.filter { a -> a.id !in known },
+                        activitiesExhausted = !hasMore,
+                    )
+                }
+                is Resource.Error -> _state.update {
+                    it.copy(loadingMoreActivities = false, error = result.error.message)
+                }
+                is Resource.Loading -> Unit
+            }
+        }
+    }
+
+    /** Opens the sheet for one activity row and fetches the text it replaced. */
+    fun showPreviousValue(activityId: Int) {
+        _state.update { it.copy(previousValue = PreviousValueSheet(activityId = activityId, loading = true)) }
+        viewModelScope.launch {
+            val result = repository.previousValue(activityId)
+            _state.update { state ->
+                // The sheet may have been closed, or opened for another row, meanwhile.
+                if (state.previousValue?.activityId != activityId) return@update state
+                state.copy(
+                    previousValue = when (result) {
+                        is Resource.Success -> PreviousValueSheet(activityId, loading = false, value = result.data)
+                        is Resource.Error -> PreviousValueSheet(activityId, loading = false, error = result.error.message)
+                        is Resource.Loading -> state.previousValue
+                    },
+                )
+            }
+        }
+    }
+
+    fun dismissPreviousValue() = _state.update { it.copy(previousValue = null) }
+
+    fun openTagEditor() {
+        _state.update { it.copy(editingTags = true) }
+        if (_state.value.tagSuggestions.isEmpty()) {
+            viewModelScope.launch {
+                val result = repository.tagSuggestions()
+                if (result is Resource.Success) _state.update { it.copy(tagSuggestions = result.data) }
+            }
+        }
+    }
+
+    fun closeTagEditor() = _state.update { it.copy(editingTags = false) }
+
+    /** Sets the task's tags to exactly [names], then refreshes. */
+    fun saveTags(names: List<String>) {
+        _state.update { it.copy(savingTags = true) }
+        viewModelScope.launch {
+            when (val result = repository.setTags(taskId, names)) {
+                is Resource.Success -> {
+                    _state.update { state ->
+                        state.copy(
+                            savingTags = false,
+                            editingTags = false,
+                            detail = state.detail?.copy(tags = result.data),
+                        )
+                    }
+                    poll()
+                }
+                is Resource.Error -> _state.update { it.copy(savingTags = false, notice = result.error.message) }
+                is Resource.Loading -> Unit
+            }
+        }
+    }
+
+    /**
+     * Deletes one of the user's own comments, then refreshes. Removed from the paged-in
+     * older list straight away, because a refresh only replaces the first page.
+     */
+    fun deleteComment(commentId: Int) {
+        if (_state.value.deletingCommentId != null) return
+        _state.update { it.copy(deletingCommentId = commentId) }
+        viewModelScope.launch {
+            when (val result = repository.deleteComment(projectId, taskId, commentId)) {
+                is Resource.Success -> {
+                    _state.update { state ->
+                        state.copy(
+                            deletingCommentId = null,
+                            olderComments = state.olderComments.filter { it.id != commentId },
+                            detail = state.detail?.let { d -> d.copy(comments = d.comments.filter { it.id != commentId }) },
+                        )
+                    }
+                    poll()
+                }
+                is Resource.Error -> _state.update {
+                    it.copy(deletingCommentId = null, notice = result.error.message)
+                }
+                is Resource.Loading -> Unit
+            }
+        }
+    }
+
+    fun openFieldEditor() = _state.update { it.copy(editingFields = true, fieldErrors = emptyMap()) }
+
+    fun closeFieldEditor() = _state.update { it.copy(editingFields = false, fieldErrors = emptyMap()) }
+
+    fun clearNotice() = _state.update { it.copy(notice = null) }
+
+    /**
+     * Saves the fields that changed, then reloads the task: the save writes activity rows
+     * and may fire automation rules that change the task, so the screen redraws from what
+     * the server holds rather than from what was typed. A 422 keeps the editor open with
+     * the server's message beside the field it names.
+     */
+    fun saveCustomFields(changes: Map<Int, Any?>) {
+        if (changes.isEmpty()) {
+            closeFieldEditor()
+            return
+        }
+        _state.update { it.copy(savingFields = true, fieldErrors = emptyMap()) }
+        viewModelScope.launch {
+            when (val result = repository.saveCustomFields(projectId, taskId, changes)) {
+                is Resource.Success -> {
+                    _state.update {
+                        it.copy(savingFields = false, editingFields = false, notice = result.data)
+                    }
+                    poll()
+                }
+                is Resource.Error -> _state.update {
+                    val validation = result.error as? AppError.Validation
+                    it.copy(
+                        savingFields = false,
+                        fieldErrors = validation?.fieldErrors.orEmpty(),
+                        // A refusal not tied to a field (a 403, a stale lock) still needs saying.
+                        notice = if (validation == null) result.error.message else null,
+                    )
                 }
                 is Resource.Loading -> Unit
             }
@@ -323,3 +510,11 @@ class TaskDetailViewModel @Inject constructor(
         }
     }
 }
+
+/** What the "previous text" sheet is showing for one activity row. */
+data class PreviousValueSheet(
+    val activityId: Int,
+    val loading: Boolean = false,
+    val value: PreviousValue? = null,
+    val error: String? = null,
+)

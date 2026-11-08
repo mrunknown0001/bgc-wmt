@@ -6,6 +6,7 @@ import com.google.firebase.messaging.FirebaseMessaging
 import com.wmt.app.domain.model.User
 import com.wmt.app.domain.repository.AuthRepository
 import com.wmt.app.domain.repository.NotificationRepository
+import com.wmt.app.domain.repository.PeopleRepository
 import com.wmt.app.domain.repository.SettingsRepository
 import com.wmt.app.util.Resource
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -44,7 +45,16 @@ class ProfileViewModel @Inject constructor(
     private val authRepository: AuthRepository,
     private val settingsRepository: SettingsRepository,
     private val notificationRepository: NotificationRepository,
+    private val peopleRepository: PeopleRepository,
 ) : ViewModel() {
+
+    /** Whether this user heads or leads anyone, so My people is offered. The server's answer. */
+    private val _headsAnyone = MutableStateFlow(false)
+    val headsAnyone: StateFlow<Boolean> = _headsAnyone.asStateFlow()
+
+    init {
+        viewModelScope.launch { _headsAnyone.value = peopleRepository.headsAnyone() }
+    }
 
     val state: StateFlow<ProfileUiState> = combine(
         authRepository.currentUser,

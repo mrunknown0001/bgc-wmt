@@ -63,6 +63,12 @@ data class ActivityDto(
     @Json(name = "description") val description: String? = null,
     @Json(name = "user") val user: UserSummaryDto? = null,
     @Json(name = "created_at") val createdAt: String = "",
+    /**
+     * True when the change replaced a free-text custom field answer whose full text the
+     * server kept. The activity line itself is cut at 255 characters, so this is the only
+     * way to know there is more to show: GET /api/task-activities/{id}/previous-value.
+     */
+    @Json(name = "has_previous_value") val hasPreviousValue: Boolean = false,
 )
 
 /** GET /api/projects/{projectId}/tasks/{taskId} — { task, comments, activities }. */
@@ -85,6 +91,104 @@ data class TaskDetailResponse(
      */
     @Json(name = "showTimeInMotion") val showTimeInMotion: Boolean = false,
     @Json(name = "projectIsClosed") val projectIsClosed: Boolean = false,
+
+    // ---- The rules, as the server enforces them ----
+    // Each flag comes from the one method the server refuses with, so drawing from them
+    // means offering what will be accepted rather than finding out from a 403 or 422.
+    // canEdit and canDelete default to true because older servers sent no flag and the
+    // app always offered both; the rest default to the cautious answer.
+    @Json(name = "canEdit") val canEdit: Boolean = true,
+    @Json(name = "canDelete") val canDelete: Boolean = true,
+    @Json(name = "canEditCustomFields") val canEditCustomFields: Boolean = false,
+    @Json(name = "canChangeAssignmentAndDates") val canChangeAssignmentAndDates: Boolean = true,
+    @Json(name = "closeNeedsAttachment") val closeNeedsAttachment: Boolean = false,
+    /** Why this task cannot have subtasks, in the server's words; null when it can. */
+    @Json(name = "subtaskRestriction") val subtaskRestriction: String? = null,
+    @Json(name = "isBlocked") val isBlocked: Boolean = false,
+    @Json(name = "dependencies") val dependencies: List<TaskLinkDto> = emptyList(),
+    @Json(name = "dependents") val dependents: List<TaskLinkDto> = emptyList(),
+    @Json(name = "tags") val tags: List<TagDto> = emptyList(),
+    @Json(name = "totalComments") val totalComments: Int? = null,
+    @Json(name = "totalActivities") val totalActivities: Int? = null,
+
+    // ---- Custom fields (project tasks only) ----
+    @Json(name = "customFields") val customFields: List<TaskCustomFieldDto> = emptyList(),
+    /**
+     * The task's values, keyed by custom field id. Untyped on purpose: the server builds
+     * this with Laravel's keyBy(), and an empty keyed collection serializes as `[]`
+     * rather than `{}`, which a typed Map would refuse -- taking the whole task screen
+     * down for every task with no answers yet. [toCustomFieldValues] reads either shape.
+     */
+    @Json(name = "customFieldValues") val customFieldValues: Any? = null,
+)
+
+/** A dependency or dependent: just enough to name it and say whether it is still open. */
+@JsonClass(generateAdapter = true)
+data class TaskLinkDto(
+    @Json(name = "id") val id: Int = 0,
+    @Json(name = "title") val title: String = "",
+    @Json(name = "status") val status: String = "",
+)
+
+@JsonClass(generateAdapter = true)
+data class TagDto(
+    @Json(name = "id") val id: Int = 0,
+    @Json(name = "name") val name: String = "",
+)
+
+/**
+ * A project's custom field definition, stamped with whether it is locked for the viewer.
+ * The storage shape is the same as an approval custom field's, which is why it maps onto
+ * [com.wmt.app.domain.model.ApprovalCustomField] and reuses that one set of editors.
+ */
+@JsonClass(generateAdapter = true)
+data class TaskCustomFieldDto(
+    @Json(name = "id") val id: Int = 0,
+    @Json(name = "name") val name: String = "",
+    @Json(name = "type") val type: String = "text",
+    @Json(name = "is_required") val isRequired: Boolean = false,
+    @Json(name = "position") val position: Int = 0,
+    @Json(name = "config") val config: Map<String, Any?>? = null,
+    @Json(name = "options") val options: List<TaskFieldOptionDto> = emptyList(),
+    @Json(name = "is_locked") val isLocked: Boolean = false,
+    /** Locked and this person is not one of the project's managers. */
+    @Json(name = "locked_for_me") val lockedForMe: Boolean = false,
+)
+
+@JsonClass(generateAdapter = true)
+data class TaskFieldOptionDto(
+    @Json(name = "id") val id: Int = 0,
+    @Json(name = "label") val label: String = "",
+    @Json(name = "color") val color: String? = null,
+    @Json(name = "position") val position: Int = 0,
+)
+
+/** GET …/activities?before_id= — one older page of the timeline. */
+@JsonClass(generateAdapter = true)
+data class PaginatedActivitiesResponse(
+    @Json(name = "activities") val activities: List<ActivityDto> = emptyList(),
+    @Json(name = "has_more") val hasMore: Boolean = false,
+)
+
+/** GET /api/task-activities/{id}/previous-value. */
+@JsonClass(generateAdapter = true)
+data class PreviousValueResponse(
+    @Json(name = "field") val field: String? = null,
+    @Json(name = "value") val value: String? = null,
+    @Json(name = "changed_at") val changedAt: String? = null,
+)
+
+/** Body for PUT …/custom-fields: `{"values": {"<fieldId>": raw}}`, changed fields only. */
+@JsonClass(generateAdapter = true)
+data class CustomFieldValuesRequest(
+    @Json(name = "values") val values: Map<String, Any?>,
+)
+
+/** PUT …/custom-fields response. `values` is keyed like customFieldValues, so it is untyped too. */
+@JsonClass(generateAdapter = true)
+data class CustomFieldValuesResponse(
+    @Json(name = "values") val values: Any? = null,
+    @Json(name = "automation_warning") val automationWarning: String? = null,
 )
 
 /** PATCH /api/projects/{projectId}/tasks/{taskId}/patch — { success, task }. */
@@ -205,3 +309,13 @@ data class PauseTaskRequest(
     @Json(name = "minutes") val minutes: Int,
     @Json(name = "note") val note: String? = null,
 )
+
+@JsonClass(generateAdapter = true)
+data class ReorderTodosRequest(@Json(name = "ids") val ids: List<Int>)
+
+@JsonClass(generateAdapter = true)
+data class TagsResponse(@Json(name = "tags") val tags: List<TagDto> = emptyList())
+
+@JsonClass(generateAdapter = true)
+data class SetTagsRequest(@Json(name = "tags") val tags: List<String>)
+
