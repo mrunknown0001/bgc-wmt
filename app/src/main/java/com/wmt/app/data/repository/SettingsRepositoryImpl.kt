@@ -20,6 +20,8 @@ class SettingsRepositoryImpl @Inject constructor(
 
     override val themeMode: Flow<String> = prefs.themeMode
 
+    override val startupThemeMode: String get() = prefs.startupThemeMode
+
     override suspend fun setThemeMode(mode: String) = prefs.saveThemeMode(mode)
 
     override suspend fun checkHealth(baseUrl: String): Resource<Unit> {

@@ -15,8 +15,13 @@ import javax.inject.Inject
 class ThemeViewModel @Inject constructor(
     settingsRepository: SettingsRepository,
 ) : ViewModel() {
+    /**
+     * Seeded from the choice read at process start, so a device set to "dark"
+     * opens dark instead of showing one light frame while DataStore catches
+     * up. Nothing saved yet means "system", as before.
+     */
     val themeMode: StateFlow<String> = settingsRepository.themeMode
-        .stateIn(viewModelScope, SharingStarted.Eagerly, "system")
+        .stateIn(viewModelScope, SharingStarted.Eagerly, settingsRepository.startupThemeMode)
 
     /**
      * The accent the server has us set to.

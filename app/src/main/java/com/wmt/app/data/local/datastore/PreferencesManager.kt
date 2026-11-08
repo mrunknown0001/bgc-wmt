@@ -92,21 +92,31 @@ class PreferencesManager @Inject constructor(
     /**
      * The cached accent as of process start, read synchronously so the very
      * first frame is already the right colour rather than blue for a moment.
-     * DataStore serves this from memory once loaded, so the read costs little
-     * beyond the snapshot the server-URL seed below already pays for.
      */
     @Volatile
     var startupPrimaryColor: String? = null
         private set
 
+    /**
+     * The saved light/dark choice as of process start, for the same reason:
+     * a device set to "dark" in the app opened on one light frame while the
+     * stored value was still on its way from DataStore.
+     */
+    @Volatile
+    var startupThemeMode: String = "system"
+        private set
+
     init {
-        // Seed the interceptor caches synchronously so the very first request is authed.
-        // NB: must run after `prefs`/`serverUrl` are initialised, since it reads them.
+        // One synchronous snapshot seeds everything the first request and the
+        // first frame need: the interceptor caches, so that request is authed,
+        // and the theme and accent, so the app opens on the right colours
+        // instead of correcting itself a moment later.
+        // NB: must run after `prefs` is initialised, since it reads it.
         sessionManager.token = _token.value
-        sessionManager.serverUrl = runBlocking { readServerUrl() }
-        // Read off `prefs` rather than the `primaryColor` flow below: that
-        // property is declared later in the file and would still be null here.
-        startupPrimaryColor = runBlocking { prefs.first()[Keys.PRIMARY_COLOR] }
+        val startup = runBlocking { prefs.first() }
+        sessionManager.serverUrl = startup[Keys.SERVER_URL]
+        startupPrimaryColor = startup[Keys.PRIMARY_COLOR]
+        startupThemeMode = startup[Keys.THEME_MODE] ?: "system"
     }
 
     val unreadCount: Flow<Int> = prefs.map { it[Keys.UNREAD_COUNT] ?: 0 }
@@ -137,8 +147,6 @@ class PreferencesManager @Inject constructor(
     val notificationPreferences: Flow<Map<String, Boolean>> = prefs.map { p ->
         p[Keys.NOTIF_PREFS]?.let { runCatching { mapAdapter.fromJson(it) }.getOrNull() } ?: emptyMap()
     }
-
-    private suspend fun readServerUrl(): String? = serverUrl.first()
 
     suspend fun saveServerUrl(url: String) {
         val normalised = url.trim().trimEnd('/')

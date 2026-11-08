@@ -38,6 +38,8 @@ interface SettingsRepository {
     suspend fun clearServerUrl()
     /** "system" | "light" | "dark". */
     val themeMode: Flow<String>
+    /** The same value as of process start, for painting the first frame without a flash. */
+    val startupThemeMode: String
     suspend fun setThemeMode(mode: String)
     /** Server-configured general upload cap in MB (videos have a fixed 50MB cap). */
     val maxUploadSizeMb: Flow<Int>
