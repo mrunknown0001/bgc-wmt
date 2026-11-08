@@ -158,3 +158,75 @@ data class TimeCorrectionCountsDto(
     @Json(name = "to_decide") val toDecide: Int = 0,
     @Json(name = "mine") val mine: Int = 0,
 )
+
+// ---- My Personnel: GET /api/my-personnel and /api/my-personnel/overdue ----
+// A 403 means this person heads or leads nothing: the screen is simply not theirs.
+
+@JsonClass(generateAdapter = true)
+data class MyPersonnelResponse(
+    @Json(name = "units") val units: List<PersonnelUnitDto> = emptyList(),
+    /**
+     * Who is away and who holds their work, keyed by user id. Untyped for the same reason
+     * as a task's customFieldValues: an empty PHP array serializes as `[]`, not `{}`.
+     */
+    @Json(name = "coveredBy") val coveredBy: Any? = null,
+    @Json(name = "viewerId") val viewerId: Int? = null,
+)
+
+@JsonClass(generateAdapter = true)
+data class PersonnelUnitDto(
+    /** division, department or team. */
+    @Json(name = "type") val type: String = "",
+    @Json(name = "id") val id: Int = 0,
+    @Json(name = "name") val name: String = "",
+    @Json(name = "members") val members: List<PersonnelMemberDto> = emptyList(),
+    @Json(name = "children") val children: List<PersonnelUnitDto> = emptyList(),
+)
+
+@JsonClass(generateAdapter = true)
+data class PersonnelMemberDto(
+    @Json(name = "id") val id: Int = 0,
+    @Json(name = "name") val name: String = "",
+    @Json(name = "position") val position: String? = null,
+    @Json(name = "role") val role: String? = null,
+    @Json(name = "open_tasks") val openTasks: Int = 0,
+    @Json(name = "overdue_tasks") val overdueTasks: Int = 0,
+)
+
+@JsonClass(generateAdapter = true)
+data class PersonnelOverdueResponse(
+    @Json(name = "tasks") val tasks: List<OverdueTaskDto> = emptyList(),
+    @Json(name = "summary") val summary: OverdueSummaryDto = OverdueSummaryDto(),
+    @Json(name = "buckets") val buckets: List<OverdueBucketDto> = emptyList(),
+    @Json(name = "limit") val limit: Int = 0,
+    /** More are overdue than were sent; say so rather than presenting a sample as all. */
+    @Json(name = "capped") val capped: Boolean = false,
+)
+
+@JsonClass(generateAdapter = true)
+data class OverdueTaskDto(
+    @Json(name = "id") val id: Int = 0,
+    @Json(name = "title") val title: String = "",
+    @Json(name = "status") val status: String = "",
+    @Json(name = "priority") val priority: String = "medium",
+    @Json(name = "due_date") val dueDate: String? = null,
+    @Json(name = "days_late") val daysLate: Int = 0,
+    @Json(name = "bucket") val bucket: String? = null,
+    @Json(name = "project") val project: IdNameDto? = null,
+    @Json(name = "assignee") val assignee: IdNameDto? = null,
+)
+
+@JsonClass(generateAdapter = true)
+data class OverdueSummaryDto(
+    @Json(name = "total") val total: Int = 0,
+    @Json(name = "people") val people: Int = 0,
+    @Json(name = "projects") val projects: Int = 0,
+)
+
+@JsonClass(generateAdapter = true)
+data class OverdueBucketDto(
+    @Json(name = "key") val key: String = "",
+    @Json(name = "label") val label: String = "",
+    @Json(name = "count") val count: Int = 0,
+)
+

@@ -83,3 +83,48 @@ data class TimeCorrections(
     val toDecideCount: Int = 0,
     val mineCount: Int = 0,
 )
+
+/** A division, department or team, with its people and the units inside it. */
+data class PersonnelUnit(
+    val type: String,
+    val id: Int,
+    val name: String,
+    val members: List<PersonnelMember>,
+    val children: List<PersonnelUnit>,
+)
+
+data class PersonnelMember(
+    val id: Int,
+    val name: String,
+    val position: String?,
+    val openTasks: Int,
+    val overdueTasks: Int,
+    /** "Away — covered by …", when somebody is holding their work. */
+    val coveredBy: String? = null,
+)
+
+data class OverdueTask(
+    val id: Int,
+    val title: String,
+    val priority: String,
+    val dueDate: String?,
+    val daysLate: Int,
+    val bucket: String?,
+    val projectId: Int?,
+    val projectName: String?,
+    val assigneeName: String?,
+) {
+    val priorityEnum: TaskPriority get() = TaskPriority.from(priority)
+}
+
+data class OverdueBucket(val key: String, val label: String, val count: Int)
+
+data class PersonnelOverdue(
+    val tasks: List<OverdueTask> = emptyList(),
+    val total: Int = 0,
+    val people: Int = 0,
+    val buckets: List<OverdueBucket> = emptyList(),
+    val limit: Int = 0,
+    val capped: Boolean = false,
+)
+

@@ -67,8 +67,10 @@ fun ProfileScreen(
     onOpenSharedRequests: (() -> Unit)? = null,
     onOpenTimeCorrections: (() -> Unit)? = null,
     onOpenApprovalCover: (() -> Unit)? = null,
+    onOpenMyPeople: (() -> Unit)? = null,
     viewModel: ProfileViewModel = hiltViewModel(),
 ) {
+    val headsAnyone by viewModel.headsAnyone.collectAsStateWithLifecycle()
     val state by viewModel.state.collectAsStateWithLifecycle()
     val pushDiag by viewModel.pushDiag.collectAsStateWithLifecycle()
     val savingPrefs by viewModel.savingPreferences.collectAsStateWithLifecycle()
@@ -168,6 +170,8 @@ fun ProfileScreen(
                 onOpenTimeCorrections = onOpenTimeCorrections,
                 // Cover is for approvers: only offered to someone who decides approvals.
                 onOpenApprovalCover = onOpenApprovalCover?.takeIf { state.user?.capabilities?.canAccessApprovals == true },
+                // Only for someone who heads or leads a unit; everyone else has nobody to look at.
+                onOpenMyPeople = onOpenMyPeople?.takeIf { headsAnyone },
             )
 
             AppearanceSection(current = state.themeMode, onSelect = viewModel::setTheme)
@@ -464,8 +468,10 @@ private fun YourWorkSection(
     onOpenSharedRequests: (() -> Unit)?,
     onOpenTimeCorrections: (() -> Unit)?,
     onOpenApprovalCover: (() -> Unit)?,
+    onOpenMyPeople: (() -> Unit)? = null,
 ) {
     val rows = listOfNotNull(
+        onOpenMyPeople?.let { Triple("My people", "The people you head or lead, and their overdue work", it) },
         onOpenSharedRequests?.let { Triple("Shared with me", "Approval requests people shared with you", it) },
         onOpenTimeCorrections?.let { Triple("Time corrections", "Corrections to decide, and ones you asked for", it) },
         onOpenApprovalCover?.let { Triple("Approval cover", "Who acts on your approvals while you are away", it) },

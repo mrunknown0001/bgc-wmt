@@ -26,6 +26,8 @@ import com.wmt.app.domain.model.ProjectDetail
 import com.wmt.app.domain.model.SearchResults
 import com.wmt.app.domain.model.Task
 import com.wmt.app.domain.model.TaskDetail
+import com.wmt.app.domain.model.PersonnelUnit
+import com.wmt.app.domain.model.PersonnelOverdue
 import com.wmt.app.domain.model.ApprovalCover
 import com.wmt.app.domain.model.PersonOption
 import com.wmt.app.domain.model.TimeCorrections
@@ -402,4 +404,15 @@ interface PeopleRepository {
 
     /** Ends cover; returns how many pending approvals the stand-in was taken off. */
     suspend fun removeApprovalCover(id: Int): Resource<Int>
+
+    /**
+     * The people this user heads or leads. A Forbidden error means they head nothing --
+     * an answer, not a failure -- and is remembered for the session by [headsAnyone].
+     */
+    suspend fun myPersonnel(): Resource<List<PersonnelUnit>>
+
+    suspend fun personnelOverdue(): Resource<PersonnelOverdue>
+
+    /** Whether to offer My people at all: asked once per session, then remembered. */
+    suspend fun headsAnyone(): Boolean
 }

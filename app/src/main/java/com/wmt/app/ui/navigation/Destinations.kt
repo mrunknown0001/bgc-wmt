@@ -40,6 +40,7 @@ object MainRoutes {
     const val SHARED_REQUESTS = "approvals/shared"
     const val TIME_CORRECTIONS = "time-corrections"
     const val APPROVAL_COVER = "approvals/cover"
+    const val MY_PEOPLE = "people"
 
     /** One route for both raising and editing; requestId 0 means a new request. */
     const val APPROVAL_FORM = "approval/form/{projectId}?requestId={requestId}"

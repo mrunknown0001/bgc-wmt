@@ -457,4 +457,13 @@ class WmtApiContractTest {
         api.removeApprovalCover(3)
         assertSent("DELETE", "/api/approval-delegations/3")
     }
+
+    @Test
+    fun `my people and their overdue work are plain gets`() = runTest {
+        api.myPersonnel()
+        assertSent("GET", "/api/my-personnel")
+
+        api.personnelOverdue()
+        assertSent("GET", "/api/my-personnel/overdue")
+    }
 }

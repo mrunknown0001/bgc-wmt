@@ -7,6 +7,9 @@ import com.wmt.app.data.remote.dto.toDomain
 import com.wmt.app.data.remote.safeApiCall
 import com.wmt.app.domain.model.ApprovalCover
 import com.wmt.app.domain.model.PersonOption
+import com.wmt.app.domain.model.PersonnelOverdue
+import com.wmt.app.domain.model.PersonnelUnit
+import com.wmt.app.util.AppError
 import com.wmt.app.domain.repository.PeopleRepository
 import com.wmt.app.util.Resource
 import javax.inject.Inject
@@ -48,4 +51,26 @@ class PeopleRepositoryImpl @Inject constructor(
 
     override suspend fun removeApprovalCover(id: Int): Resource<Int> =
         safeApiCall(moshi) { api.removeApprovalCover(id).removed }
+
+    /** Null until asked. A head stays a head for a session; a reorganisation can wait for the next. */
+    @Volatile private var heads: Boolean? = null
+
+    override suspend fun myPersonnel(): Resource<List<PersonnelUnit>> {
+        val result = safeApiCall(moshi) { api.myPersonnel().toDomain() }
+        when {
+            result is Resource.Success -> heads = true
+            result is Resource.Error && result.error is AppError.Forbidden -> heads = false
+        }
+        return result
+    }
+
+    override suspend fun personnelOverdue(): Resource<PersonnelOverdue> =
+        safeApiCall(moshi) { api.personnelOverdue().toDomain() }
+
+    override suspend fun headsAnyone(): Boolean {
+        heads?.let { return it }
+        // Only a definite answer is remembered: a network failure asks again next time.
+        myPersonnel()
+        return heads ?: false
+    }
 }

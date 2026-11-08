@@ -49,6 +49,8 @@ import com.wmt.app.data.remote.dto.AmendTimeLogRequest
 import com.wmt.app.data.remote.dto.AmendmentResponse
 import com.wmt.app.data.remote.dto.ReviewAmendmentRequest
 import com.wmt.app.data.remote.dto.TaskDetailResponse
+import com.wmt.app.data.remote.dto.MyPersonnelResponse
+import com.wmt.app.data.remote.dto.PersonnelOverdueResponse
 import com.wmt.app.data.remote.dto.SharedRequestsResponse
 import com.wmt.app.data.remote.dto.DelegationsResponse
 import com.wmt.app.data.remote.dto.CreateDelegationRequest
@@ -545,4 +547,11 @@ interface WmtApi {
         @Query("status") status: String? = null,
         @Query("page") page: Int = 1,
     ): TimeCorrectionsResponse
+
+    /** A head's or leader's people, by the org chart. 403 for anybody heading nothing. */
+    @GET("api/my-personnel")
+    suspend fun myPersonnel(): MyPersonnelResponse
+
+    @GET("api/my-personnel/overdue")
+    suspend fun personnelOverdue(): PersonnelOverdueResponse
 }

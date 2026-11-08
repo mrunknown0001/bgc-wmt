@@ -45,6 +45,7 @@ import com.wmt.app.fcm.InAppMessage
 import com.wmt.app.ui.timesheet.TimeCorrectionsScreen
 import com.wmt.app.ui.approvals.ApprovalCoverScreen
 import com.wmt.app.ui.approvals.SharedRequestsScreen
+import com.wmt.app.ui.people.MyPeopleScreen
 import com.wmt.app.ui.approvals.ApprovalDetailScreen
 import com.wmt.app.ui.approvals.ApprovalFormScreen
 import com.wmt.app.ui.approvals.ApprovalTrailScreen
@@ -393,6 +394,13 @@ private fun MainNavHost(
                 onOpenSharedRequests = { navController.navigate(MainRoutes.SHARED_REQUESTS) },
                 onOpenTimeCorrections = { navController.navigate(MainRoutes.TIME_CORRECTIONS) },
                 onOpenApprovalCover = { navController.navigate(MainRoutes.APPROVAL_COVER) },
+                onOpenMyPeople = { navController.navigate(MainRoutes.MY_PEOPLE) },
+            )
+        }
+        composable(MainRoutes.MY_PEOPLE) {
+            MyPeopleScreen(
+                onBack = { navController.popBackStack() },
+                onOpenTask = { projectId, taskId -> navController.navigate(MainRoutes.taskDetail(projectId, taskId)) },
             )
         }
         composable(MainRoutes.SHARED_REQUESTS) {
