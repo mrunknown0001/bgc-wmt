@@ -47,6 +47,13 @@ val OutlineDarkStrong = Slate600
 val OnSurfaceDark = Slate100
 val OnSurfaceMutedDark = Slate300 // 400 is under AA on a 700 panel
 
+/**
+ * The ground behind a full-screen image or video. Stays near-black in both
+ * themes on purpose -- a media viewer is not a surface of the app, it is the
+ * absence of one, and a light backdrop would change how the content reads.
+ */
+val MediaBackdrop = Color(0xFF1C1C1C)
+
 // ---------------------------------------------------------------------------
 // Semantic status colours (shared by light & dark; each badge derives a
 // readable label against its own tint -- see StatusColors.kt)

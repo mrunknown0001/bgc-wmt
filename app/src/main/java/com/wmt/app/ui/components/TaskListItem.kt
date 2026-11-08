@@ -43,17 +43,15 @@ import androidx.compose.ui.unit.dp
 import com.wmt.app.domain.model.Task
 import com.wmt.app.domain.model.TaskPriority
 import com.wmt.app.domain.model.TaskStatus
+import com.wmt.app.ui.theme.ProjectDotHues
 import com.wmt.app.ui.theme.badgeColors
 import com.wmt.app.util.DateUtils
 
-// Deterministic vibrant colors for project accent dots (matches the brand palette family).
-private val projectDotColors = listOf(
-    Color(0xFF5F4BD8), Color(0xFFD6437E), Color(0xFF00A3B4), Color(0xFF23A45C),
-    Color(0xFFF97316), Color(0xFF8A4DDB), Color(0xFF3E6FF4), Color(0xFFE53935),
-)
-
+// Deterministic dot per project, from the shared identity hues in the theme.
+// Fixed on purpose: a project people recognise by its colour should not change
+// colour because the organisation picked a different accent.
 fun projectDotColor(projectId: Int): Color =
-    projectDotColors[projectId.mod(projectDotColors.size)]
+    ProjectDotHues[projectId.mod(ProjectDotHues.size)]
 
 /**
  * A tappable circular completion toggle: an outlined ring when open (optionally

@@ -64,6 +64,7 @@ import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import coil.compose.AsyncImage
 import com.wmt.app.domain.model.Attachment
+import com.wmt.app.ui.theme.MediaBackdrop
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.File
@@ -295,7 +296,7 @@ private fun PdfPreviewDialog(
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .background(Color(0xFF1C1C1C)),
+                .background(MediaBackdrop),
         ) {
             when {
                 error != null -> Text(

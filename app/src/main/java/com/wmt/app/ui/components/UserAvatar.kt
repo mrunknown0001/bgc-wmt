@@ -18,13 +18,10 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import com.wmt.app.domain.model.UserSummary
+import com.wmt.app.ui.theme.AvatarHues
 
-// Distinct, legible-on-white-text background colors picked deterministically per user.
-private val avatarColors = listOf(
-    Color(0xFF1565C0), Color(0xFF6A1B9A), Color(0xFF2E7D32), Color(0xFFEF6C00),
-    Color(0xFFC2185B), Color(0xFF00838F), Color(0xFF4527A0), Color(0xFFAD1457),
-    Color(0xFF00695C), Color(0xFF5D4037), Color(0xFF283593), Color(0xFFD84315),
-)
+// Backgrounds picked deterministically per user, from the shared identity hues
+// in the theme -- each already dark enough to carry white initials at AA.
 
 @Composable
 fun UserAvatar(
@@ -44,7 +41,7 @@ fun UserAvatar(
                 .clip(shape),
         )
     } else {
-        val bg = user?.let { avatarColors[it.id.mod(avatarColors.size)] }
+        val bg = user?.let { AvatarHues[it.id.mod(AvatarHues.size)] }
             ?: MaterialTheme.colorScheme.surfaceVariant
         Box(
             modifier = modifier
