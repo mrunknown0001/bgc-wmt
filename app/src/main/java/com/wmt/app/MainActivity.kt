@@ -40,12 +40,13 @@ class MainActivity : ComponentActivity() {
         setContent {
             val themeViewModel: ThemeViewModel = hiltViewModel()
             val themeMode by themeViewModel.themeMode.collectAsStateWithLifecycle()
+            val accent by themeViewModel.accent.collectAsStateWithLifecycle()
             val darkTheme = when (themeMode) {
                 "light" -> false
                 "dark" -> true
                 else -> isSystemInDarkTheme()
             }
-            WmtTheme(darkTheme = darkTheme) {
+            WmtTheme(darkTheme = darkTheme, accent = accent) {
                 WmtApp(intentDeepLinks = deepLinks)
             }
         }

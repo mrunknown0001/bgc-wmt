@@ -3,27 +3,13 @@ package com.wmt.app.ui.theme
 import androidx.compose.ui.graphics.Color
 
 // ---------------------------------------------------------------------------
-// Brand palette
+// Neutrals and status colours.
 //
-// A vibrant violet-led, productivity-app look (in the spirit of modern tools
-// like ClickUp) on clean neutrals. Every hue is our own — deliberately distinct
-// from any third-party brand; only the general "energetic accent + saturated
-// status colors on white" layout language is shared.
+// There is no brand colour in here any more: the accent is whatever the
+// organisation chose in WMT web, and every brand-coloured slot is derived from
+// it in Accent.kt. What is left is the ground it all sits on — neutrals — and
+// the semantic status hues, which mean the same thing whatever the accent is.
 // ---------------------------------------------------------------------------
-
-// Signature violet (our brand accent).
-val Violet = Color(0xFF5F4BD8)
-val VioletPressed = Color(0xFF4B38C4)
-val VioletLight = Color(0xFFA79BF0)      // accent for dark surfaces
-val VioletContainer = Color(0xFFE9E5FC)  // soft tint behind violet content (light)
-val OnVioletContainer = Color(0xFF221A5E)
-val VioletContainerDark = Color(0xFF3A2F8F)
-
-// Supporting accent (secondary emphasis / highlights).
-val Magenta = Color(0xFFD6437E)
-val MagentaLight = Color(0xFFF29AC0)
-val MagentaContainer = Color(0xFFFBDEEB)
-val OnMagentaContainer = Color(0xFF4A0F2B)
 
 // Neutrals — ink on white cards over a faint cool-gray canvas.
 val Ink = Color(0xFF1E1F25)            // primary text / near-black

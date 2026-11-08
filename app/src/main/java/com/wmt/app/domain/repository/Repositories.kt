@@ -41,7 +41,11 @@ interface SettingsRepository {
     suspend fun setThemeMode(mode: String)
     /** Server-configured general upload cap in MB (videos have a fixed 50MB cap). */
     val maxUploadSizeMb: Flow<Int>
-    /** Fetches /api/settings and caches the upload limit locally. */
+    /** The accent set in WMT web, as last cached. Null before the first settings fetch. */
+    val primaryColor: Flow<String?>
+    /** The same value as of process start, for painting the first frame without a flash. */
+    val startupPrimaryColor: String?
+    /** Fetches /api/settings and caches the upload limit and accent locally. */
     suspend fun refreshAppSettings()
 }
 

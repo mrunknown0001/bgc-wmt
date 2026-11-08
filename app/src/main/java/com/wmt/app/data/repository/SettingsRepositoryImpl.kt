@@ -41,8 +41,19 @@ class SettingsRepositoryImpl @Inject constructor(
 
     override val maxUploadSizeMb: Flow<Int> = prefs.maxUploadSizeMb
 
+    override val primaryColor: Flow<String?> = prefs.primaryColor
+
+    override val startupPrimaryColor: String? get() = prefs.startupPrimaryColor
+
     override suspend fun refreshAppSettings() {
         runCatching { api.appSettings() }
-            .onSuccess { prefs.saveMaxUploadSizeMb(it.maxUploadSize) }
+            .onSuccess {
+                prefs.saveMaxUploadSizeMb(it.maxUploadSize)
+                // Only overwrite the cached accent when the server actually
+                // named one; a null here means "not configured", which should
+                // leave the last known colour alone rather than reset it.
+                it.primaryColor?.takeIf { value -> value.isNotBlank() }
+                    ?.let { value -> prefs.savePrimaryColor(value) }
+            }
     }
 }

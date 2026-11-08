@@ -48,6 +48,7 @@ class PreferencesManager @Inject constructor(
         val NOTIF_PREFS = stringPreferencesKey("notif_prefs")
         val THEME_MODE = stringPreferencesKey("theme_mode")
         val MAX_UPLOAD_MB = intPreferencesKey("max_upload_mb")
+        val PRIMARY_COLOR = stringPreferencesKey("primary_color")
     }
 
     private val securePrefs = EncryptedSharedPreferences.create(
@@ -88,11 +89,24 @@ class PreferencesManager @Inject constructor(
         context.dataStore.edit { it[Keys.THEME_MODE] = mode }
     }
 
+    /**
+     * The cached accent as of process start, read synchronously so the very
+     * first frame is already the right colour rather than blue for a moment.
+     * DataStore serves this from memory once loaded, so the read costs little
+     * beyond the snapshot the server-URL seed below already pays for.
+     */
+    @Volatile
+    var startupPrimaryColor: String? = null
+        private set
+
     init {
         // Seed the interceptor caches synchronously so the very first request is authed.
         // NB: must run after `prefs`/`serverUrl` are initialised, since it reads them.
         sessionManager.token = _token.value
         sessionManager.serverUrl = runBlocking { readServerUrl() }
+        // Read off `prefs` rather than the `primaryColor` flow below: that
+        // property is declared later in the file and would still be null here.
+        startupPrimaryColor = runBlocking { prefs.first()[Keys.PRIMARY_COLOR] }
     }
 
     val unreadCount: Flow<Int> = prefs.map { it[Keys.UNREAD_COUNT] ?: 0 }
@@ -102,6 +116,17 @@ class PreferencesManager @Inject constructor(
 
     suspend fun saveMaxUploadSizeMb(mb: Int) {
         context.dataStore.edit { it[Keys.MAX_UPLOAD_MB] = mb.coerceAtLeast(1) }
+    }
+
+    /**
+     * The accent chosen in WMT web, cached so a cold start paints the right
+     * colour straight away instead of showing the default and correcting
+     * itself a moment later. Null until the first successful settings fetch.
+     */
+    val primaryColor: Flow<String?> = prefs.map { it[Keys.PRIMARY_COLOR] }
+
+    suspend fun savePrimaryColor(value: String) {
+        context.dataStore.edit { it[Keys.PRIMARY_COLOR] = value }
     }
 
     val currentUser: Flow<User?> = prefs.map { p ->
