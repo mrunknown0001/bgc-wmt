@@ -1,5 +1,18 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
 
-    <style name="Theme.Wmt" parent="android:Theme.Material.Light.NoActionBar" />
+    <!--
+      The launch theme. It is only on screen until Compose draws, and WmtTheme
+      owns everything after that, but the system creates this window before the
+      process is ready. So it is the one piece of the app's appearance that
+      cannot be decided in Kotlin.
+
+      That also means it can only follow the *system* night setting, through
+      the values-night copy: a cold start has no way to read the in-app
+      light/dark choice before the window exists.
+    -->
+    <style name="Theme.Wmt" parent="android:Theme.Material.Light.NoActionBar">
+        <item name="android:windowBackground">@color/window_background</item>
+        <item name="android:windowLightStatusBar">true</item>
+    </style>
 </resources>
