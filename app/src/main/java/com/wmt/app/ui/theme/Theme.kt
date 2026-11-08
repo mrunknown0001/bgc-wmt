@@ -47,8 +47,11 @@ private fun lightSchemeFor(accent: Accent): ColorScheme {
         surfaceContainerLowest = Surface,
         surfaceContainerLow = SurfaceSofter,
         surfaceContainer = SurfaceSoft,
+        // The ramp gives four usable steps on this side, so the top two
+        // elevations share one. Better a repeated step than a hex invented
+        // between them -- and this is the step cards are drawn on.
         surfaceContainerHigh = SurfaceHigh,
-        surfaceContainerHighest = SurfaceHighest,
+        surfaceContainerHighest = SurfaceHigh,
         outline = Outline,
         outlineVariant = OutlineSoft,
         error = error,
@@ -85,10 +88,8 @@ private fun darkSchemeFor(accent: Accent): ColorScheme {
         onSurfaceVariant = OnSurfaceMutedDark,
         surfaceTint = a.primary,
         surfaceContainerLowest = InkDark,
-        surfaceContainerLow = SurfaceDark,
+        surfaceContainerLow = SurfaceSoftDark,
         surfaceContainer = SurfaceSoftDark,
-        // The ramp gives four steps on this side, so the top two elevations
-        // share one. Better a repeated step than a hex invented between them.
         surfaceContainerHigh = SurfaceHighDark,
         surfaceContainerHighest = SurfaceHighDark,
         outline = OutlineDarkStrong,

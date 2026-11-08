@@ -25,23 +25,29 @@ val Slate800 = Color(0xFF1E293B)
 val Slate900 = Color(0xFF0F172A)
 
 // Light theme: white cards stepping up through the ramp, ink on top.
+//
+// The steps are deliberately weighted towards the light end. Material's filled
+// Card takes surfaceContainerHighest, so whatever sits in that slot is what
+// most of the app's cards look like -- put step 300 there and every card reads
+// as a heavy grey-blue slab instead of paper. 300 earns its keep as the
+// outline instead, where a firmer line is the point.
 val Surface = Color.White
 val Canvas = Slate50              // app background
 val SurfaceSofter = Slate50       // scrolled app-bar / grouped background
 val SurfaceSoft = Slate100        // subtle panels / chips
-val SurfaceHigh = Slate200
-val SurfaceHighest = Slate300
+val SurfaceHigh = Slate200        // cards (the High and Highest slots)
 val OutlineFaint = Slate100
 val OutlineSoft = Slate200        // hairline dividers / borders
 val Outline = Slate300
 val Ink = Slate900                // primary text
 val InkMuted = Slate600           // secondary text (500 is under AA on a 100 panel)
 
-// Dark theme: the same ramp read from the other end, 900 up to 600.
+// Dark theme: the same ramp read from the other end, 900 up to 600, and the
+// same reasoning -- cards land on 700, with 600 kept for the outline.
 val InkDark = Slate900            // app background
-val SurfaceDark = Slate800
-val SurfaceSoftDark = Slate700
-val SurfaceHighDark = Slate600
+val SurfaceDark = Slate900
+val SurfaceSoftDark = Slate800    // panels / chips, one step off the surface
+val SurfaceHighDark = Slate700    // cards
 val OutlineDark = Slate700
 val OutlineDarkStrong = Slate600
 val OnSurfaceDark = Slate100

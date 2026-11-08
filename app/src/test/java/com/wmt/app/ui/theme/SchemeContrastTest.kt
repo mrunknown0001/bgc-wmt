@@ -57,6 +57,42 @@ class SchemeContrastTest {
         )
     }
 
+    /**
+     * No magenta anywhere -- including magenta nobody typed.
+     *
+     * Deriving tertiary by rotating the accent hue (Material's usual +60
+     * degrees) turned blue, indigo and purple into magenta, and blue is the
+     * default, so a fresh install showed it on the dashboard tiles. Hue is
+     * checked rather than a list of hexes because the offending colour was
+     * never written down anywhere to be grepped for.
+     */
+    @Test
+    fun `no scheme colour drifts into magenta`() {
+        val magenta = 285f..345f
+        val offenders = mutableListOf<String>()
+        for (accent in Accent.entries) {
+            for (dark in listOf(false, true)) {
+                val s = schemeFor(accent, dark)
+                val named = listOf(
+                    "primary" to s.primary, "secondary" to s.secondary, "tertiary" to s.tertiary,
+                    "primaryContainer" to s.primaryContainer,
+                    "secondaryContainer" to s.secondaryContainer,
+                    "tertiaryContainer" to s.tertiaryContainer,
+                )
+                for ((name, color) in named) {
+                    val hsl = color.toHsl()
+                    // Saturation guard: a near-grey has a hue, but no colour.
+                    if (hsl.s > 0.15f && hsl.h in magenta) {
+                        offenders += "%s/%s %s is hue %.0f".format(
+                            accent.key, if (dark) "dark" else "light", name, hsl.h,
+                        )
+                    }
+                }
+            }
+        }
+        assertTrue("magenta found:\n" + offenders.joinToString("\n"), offenders.isEmpty())
+    }
+
     @Test
     fun `the neutral ramp is ordered from lightest to darkest`() {
         val ramp = listOf(

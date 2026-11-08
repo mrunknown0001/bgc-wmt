@@ -111,19 +111,23 @@ data class AccentColors(
  *
  * Hue and saturation carry over from [Accent.base] untouched; only lightness
  * moves, which is what keeps Amber recognisably amber even once it is dark
- * enough to write white text on. Secondary and tertiary follow Material's
- * tonal convention -- the same hue at roughly a third of the chroma, and the
- * hue turned 60 degrees -- so one server setting drives the whole scheme
- * rather than a second brand colour being invented beside it.
+ * enough to write white text on. Secondary and tertiary stay in the accent's
+ * own hue too -- a third of the chroma, and a further step of lightness -- so
+ * one server setting drives the whole scheme rather than a second brand
+ * colour being invented beside it.
  */
 fun Accent.accentColors(dark: Boolean, surface: Color): AccentColors {
     val hsl = base.toHsl()
     val muted = hsl.copy(s = hsl.s * 0.35f)
-    val turned = hsl.copy(h = (hsl.h + 60f) % 360f)
     return if (dark) {
         val primary = hsl.lightenUntilReadable(on = surface)
         val secondary = muted.lightenUntilReadable(on = surface)
-        val tertiary = turned.lightenUntilReadable(on = surface)
+        // Tertiary is a further step along the accent's own hue, not a
+        // rotation of it. Material's usual +60 degrees sends blue, indigo and
+        // purple into magenta, which this design does not allow anywhere --
+        // and blue is the default, so the stat tiles on a fresh install were
+        // the first thing to show it.
+        val deep = hsl.copy(l = (primary.toHsl().l + 0.14f).coerceAtMost(0.95f))
         // The container is darkened to suit its content rather than pinned to
         // a fixed lightness. A pale tint of a high-luminance hue -- Amber
         // especially -- cannot reach the bar against any container still light
@@ -131,7 +135,7 @@ fun Accent.accentColors(dark: Boolean, surface: Color): AccentColors {
         // the text being driven to white.
         val onPrimaryBox = hsl.copy(l = 0.90f).toColor()
         val onSecondaryBox = muted.copy(l = 0.90f).toColor()
-        val onTertiaryBox = turned.copy(l = 0.90f).toColor()
+        val onTertiaryBox = deep.copy(l = 0.90f).toColor()
         AccentColors(
             primary = primary,
             onPrimary = hsl.darkenUntilReadable(on = primary),
@@ -141,17 +145,21 @@ fun Accent.accentColors(dark: Boolean, surface: Color): AccentColors {
             onSecondary = muted.darkenUntilReadable(on = secondary),
             secondaryContainer = muted.darkenUntilReadable(on = onSecondaryBox),
             onSecondaryContainer = onSecondaryBox,
-            tertiary = tertiary,
-            onTertiary = turned.darkenUntilReadable(on = tertiary),
-            tertiaryContainer = turned.darkenUntilReadable(on = onTertiaryBox),
+            tertiary = deep.toColor(),
+            onTertiary = deep.darkenUntilReadable(on = deep.toColor()),
+            tertiaryContainer = deep.darkenUntilReadable(on = onTertiaryBox),
             onTertiaryContainer = onTertiaryBox,
         )
     } else {
+        val primary = hsl.darkenUntilReadable(on = surface)
+        // The same step as in dark, taken the other way: darker than primary,
+        // so it still clears the bar on a light surface without a hue change.
+        val deep = hsl.copy(l = (primary.toHsl().l - 0.14f).coerceAtLeast(0.08f))
         val primaryBox = hsl.copy(l = 0.93f).toColor()
         val secondaryBox = muted.copy(l = 0.93f).toColor()
-        val tertiaryBox = turned.copy(l = 0.93f).toColor()
+        val tertiaryBox = deep.copy(l = 0.88f).toColor()
         AccentColors(
-            primary = hsl.darkenUntilReadable(on = surface),
+            primary = primary,
             // White is safe by construction: `primary` was darkened until it
             // cleared the bar against `surface`, and white is no darker than
             // any surface we put it on.
@@ -162,10 +170,10 @@ fun Accent.accentColors(dark: Boolean, surface: Color): AccentColors {
             onSecondary = Color.White,
             secondaryContainer = secondaryBox,
             onSecondaryContainer = muted.darkenUntilReadable(on = secondaryBox),
-            tertiary = turned.darkenUntilReadable(on = surface),
+            tertiary = deep.toColor(),
             onTertiary = Color.White,
             tertiaryContainer = tertiaryBox,
-            onTertiaryContainer = turned.darkenUntilReadable(on = tertiaryBox),
+            onTertiaryContainer = deep.darkenUntilReadable(on = tertiaryBox),
         )
     }
 }
