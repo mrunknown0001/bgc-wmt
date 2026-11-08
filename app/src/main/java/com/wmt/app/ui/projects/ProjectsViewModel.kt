@@ -23,8 +23,6 @@ data class ProjectsUiState(
     val error: String? = null,
     val refreshing: Boolean = false,
     val offline: Boolean = false,
-    val creating: Boolean = false,
-    val createError: String? = null,
 )
 
 @HiltViewModel
@@ -84,31 +82,6 @@ class ProjectsViewModel @Inject constructor(
     }
 
     private var firstVisible = true
-
-    fun clearCreateError() = _state.update { it.copy(createError = null) }
-
-    fun createProject(
-        name: String,
-        description: String?,
-        status: String,
-        dueDate: String?,
-        onSuccess: () -> Unit,
-    ) {
-        _state.update { it.copy(creating = true, createError = null) }
-        viewModelScope.launch {
-            when (val result = repository.createProject(name, description, status, dueDate)) {
-                is Resource.Success -> {
-                    _state.update { it.copy(creating = false) }
-                    load(isRefresh = true)
-                    onSuccess()
-                }
-                is Resource.Error -> _state.update {
-                    it.copy(creating = false, createError = result.error.message)
-                }
-                is Resource.Loading -> Unit
-            }
-        }
-    }
 
     private fun load(isRefresh: Boolean) {
         loadJob?.cancel()

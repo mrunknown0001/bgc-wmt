@@ -272,6 +272,9 @@ fun TaskDetailScreen(
                     onLoadMoreActivities = viewModel::loadOlderActivities,
                     onShowPreviousValue = viewModel::showPreviousValue,
                     onEditFields = viewModel::openFieldEditor,
+                    currentUserId = state.currentUserId,
+                    deletingCommentId = state.deletingCommentId,
+                    onDeleteComment = viewModel::deleteComment,
                 )
             }
         }
@@ -306,9 +309,27 @@ private fun TaskDetailContent(
     onLoadMoreActivities: () -> Unit = {},
     onShowPreviousValue: (activityId: Int) -> Unit = {},
     onEditFields: () -> Unit = {},
+    currentUserId: Int? = null,
+    deletingCommentId: Int? = null,
+    onDeleteComment: (commentId: Int) -> Unit = {},
 ) {
     val task = detail.task
     val rules = detail.rules
+    var confirmDeleteComment by remember { mutableStateOf<Int?>(null) }
+    confirmDeleteComment?.let { id ->
+        AlertDialog(
+            onDismissRequest = { confirmDeleteComment = null },
+            title = { Text("Delete comment?") },
+            text = { Text("It is removed for everyone, with its attachments.") },
+            confirmButton = {
+                TextButton(onClick = {
+                    confirmDeleteComment = null
+                    onDeleteComment(id)
+                }) { Text("Delete") }
+            },
+            dismissButton = { TextButton(onClick = { confirmDeleteComment = null }) { Text("Cancel") } },
+        )
+    }
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     var commentValue by remember { mutableStateOf(TextFieldValue("")) }
@@ -788,7 +809,13 @@ private fun TaskDetailContent(
                 }
             } else {
                 items(comments, key = { "comment-${it.id}" }) { comment ->
-                    CommentRow(comment = comment)
+                    // Offered on your own comments only: anyone else's is a 403 on the server.
+                    val mine = currentUserId != null && comment.author?.id == currentUserId
+                    CommentRow(
+                        comment = comment,
+                        onDelete = if (mine) ({ confirmDeleteComment = comment.id }) else null,
+                        deleting = deletingCommentId == comment.id,
+                    )
                 }
                 if (hasMoreComments) {
                     item(key = "comments-load-more") {
@@ -963,7 +990,11 @@ private fun MetaRow(label: String, value: String) {
 }
 
 @Composable
-private fun CommentRow(comment: Comment) {
+private fun CommentRow(
+    comment: Comment,
+    onDelete: (() -> Unit)? = null,
+    deleting: Boolean = false,
+) {
     Row(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -986,7 +1017,22 @@ private fun CommentRow(comment: Comment) {
                     text = DateUtils.timeAgo(comment.createdAt),
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.weight(1f),
                 )
+                if (onDelete != null) {
+                    if (deleting) {
+                        CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
+                    } else {
+                        IconButton(onClick = onDelete, modifier = Modifier.size(28.dp)) {
+                            Icon(
+                                Icons.Default.Delete,
+                                contentDescription = "Delete comment",
+                                modifier = Modifier.size(16.dp),
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                    }
+                }
             }
             if (comment.body.isNotBlank()) {
                 HtmlText(

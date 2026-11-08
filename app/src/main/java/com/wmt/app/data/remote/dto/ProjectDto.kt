@@ -16,21 +16,6 @@ data class ProjectDto(
     @Json(name = "members") val members: List<UserSummaryDto> = emptyList(),
 )
 
-/** Body for POST /api/projects. */
-@JsonClass(generateAdapter = true)
-data class CreateProjectRequest(
-    @Json(name = "name") val name: String,
-    @Json(name = "description") val description: String? = null,
-    @Json(name = "status") val status: String = "active",
-    @Json(name = "due_date") val dueDate: String? = null,
-)
-
-/** POST /api/projects response: { project }. */
-@JsonClass(generateAdapter = true)
-data class ProjectResponse(
-    @Json(name = "project") val project: ProjectDto = ProjectDto(),
-)
-
 /** A section/column within a project. Tasks are returned in a sibling array keyed by section_id. */
 @JsonClass(generateAdapter = true)
 data class ProjectSectionDto(

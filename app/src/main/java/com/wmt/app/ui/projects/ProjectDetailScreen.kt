@@ -18,9 +18,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.Edit
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.HorizontalDivider
@@ -30,14 +27,13 @@ import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -73,40 +69,6 @@ fun ProjectDetailScreen(
     val title = state.detail?.project?.name ?: "Project"
     val scrollBehavior = TopAppBarDefaults.enterAlwaysScrollBehavior()
     var showAddTask by remember { mutableStateOf(false) }
-    var showEdit by remember { mutableStateOf(false) }
-    var showDeleteConfirm by remember { mutableStateOf(false) }
-
-    val editTarget = state.detail
-    if (showEdit && editTarget != null) {
-        EditProjectDialog(
-            project = editTarget.project,
-            saving = state.savingEdit,
-            error = state.editError,
-            onDismiss = {
-                showEdit = false
-                viewModel.clearEditError()
-            },
-            onSave = { name, description, status, dueDate ->
-                viewModel.editProject(name, description, status, dueDate) { showEdit = false }
-            },
-        )
-    }
-    if (showDeleteConfirm) {
-        AlertDialog(
-            onDismissRequest = { if (!state.deleting) showDeleteConfirm = false },
-            title = { Text("Delete project?") },
-            text = { Text("This permanently deletes the project and its tasks. This can't be undone.") },
-            confirmButton = {
-                TextButton(
-                    onClick = { viewModel.deleteProject { onBack() } },
-                    enabled = !state.deleting,
-                ) { Text("Delete") }
-            },
-            dismissButton = {
-                TextButton(onClick = { showDeleteConfirm = false }, enabled = !state.deleting) { Text("Cancel") }
-            },
-        )
-    }
 
     val detailForDialog = state.detail
     if (showAddTask && detailForDialog != null) {
@@ -149,16 +111,6 @@ fun ProjectDetailScreen(
                             Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = "Back",
                         )
-                    }
-                },
-                actions = {
-                    if (state.detail != null) {
-                        IconButton(onClick = { showEdit = true }) {
-                            Icon(Icons.Default.Edit, contentDescription = "Edit project")
-                        }
-                        IconButton(onClick = { showDeleteConfirm = true }) {
-                            Icon(Icons.Default.Delete, contentDescription = "Delete project")
-                        }
                     }
                 },
             )

@@ -24,9 +24,6 @@ data class ProjectDetailUiState(
     val error: String? = null,
     val creatingTask: Boolean = false,
     val createTaskError: String? = null,
-    val savingEdit: Boolean = false,
-    val editError: String? = null,
-    val deleting: Boolean = false,
     /** Increments each time the user completes a task — drives the confetti burst. */
     val celebrations: Int = 0,
 )
@@ -109,44 +106,6 @@ class ProjectDetailViewModel @Inject constructor(
     }
 
     fun clearCreateTaskError() = _state.update { it.copy(createTaskError = null) }
-
-    fun clearEditError() = _state.update { it.copy(editError = null) }
-
-    fun editProject(
-        name: String,
-        description: String?,
-        status: String,
-        dueDate: String?,
-        onSuccess: () -> Unit,
-    ) {
-        _state.update { it.copy(savingEdit = true, editError = null) }
-        viewModelScope.launch {
-            when (val result = repository.updateProject(projectId, name, description, status, dueDate)) {
-                is Resource.Success -> {
-                    _state.update { it.copy(savingEdit = false) }
-                    load()
-                    onSuccess()
-                }
-                is Resource.Error -> _state.update {
-                    it.copy(savingEdit = false, editError = result.error.message)
-                }
-                is Resource.Loading -> _state.update { it.copy(savingEdit = false) }
-            }
-        }
-    }
-
-    fun deleteProject(onSuccess: () -> Unit) {
-        _state.update { it.copy(deleting = true, error = null) }
-        viewModelScope.launch {
-            when (val result = repository.deleteProject(projectId)) {
-                is Resource.Success -> onSuccess()
-                is Resource.Error -> _state.update {
-                    it.copy(deleting = false, error = result.error.message)
-                }
-                is Resource.Loading -> _state.update { it.copy(deleting = false) }
-            }
-        }
-    }
 
     fun createTask(
         title: String,

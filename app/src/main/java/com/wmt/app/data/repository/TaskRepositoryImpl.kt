@@ -278,6 +278,15 @@ class TaskRepositoryImpl @Inject constructor(
         response.activities.map { it.toDomain() } to response.hasMore
     }
 
+    override suspend fun deleteComment(projectId: Int, taskId: Int, commentId: Int): Resource<Unit> =
+        safeApiCall(moshi) {
+            if (isPersonal(projectId)) {
+                api.deletePersonalComment(taskId, commentId)
+            } else {
+                api.deleteComment(projectId, taskId, commentId)
+            }
+        }
+
     override suspend fun previousValue(activityId: Int): Resource<PreviousValue> =
         safeApiCall(moshi) { api.previousValue(activityId).toDomain() }
 

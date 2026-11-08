@@ -11,6 +11,7 @@ import com.wmt.app.domain.model.PausePreview
 import com.wmt.app.domain.model.TaskClock
 import com.wmt.app.domain.model.TaskDetail
 import com.wmt.app.domain.model.TaskStatus
+import com.wmt.app.domain.repository.AuthRepository
 import com.wmt.app.domain.repository.SettingsRepository
 import com.wmt.app.domain.repository.TaskRepository
 import com.wmt.app.util.AppError
@@ -57,6 +58,10 @@ data class TaskDetailUiState(
     val fieldErrors: Map<String, List<String>> = emptyMap(),
     /** A one-off line for a snackbar: an automation warning, or a field save that failed. */
     val notice: String? = null,
+    /** Whose comments may be deleted from this screen: their own, as the server allows. */
+    val currentUserId: Int? = null,
+    /** A comment delete in flight, so its button waits rather than queueing presses. */
+    val deletingCommentId: Int? = null,
 ) {
     /** First page plus paged-in older rows, de-duplicated after a refresh. */
     val allActivities: List<Activity>
@@ -83,6 +88,7 @@ data class TaskDetailUiState(
 class TaskDetailViewModel @Inject constructor(
     private val repository: TaskRepository,
     private val settingsRepository: SettingsRepository,
+    private val authRepository: AuthRepository,
     private val realtimeClient: RealtimeClient,
     savedStateHandle: SavedStateHandle,
 ) : ViewModel() {
@@ -99,6 +105,9 @@ class TaskDetailViewModel @Inject constructor(
         viewModelScope.launch { realtimeClient.observeTask(taskId).collect { poll() } }
         // Keep the attachment-size validation in sync with the server's setting.
         viewModelScope.launch { settingsRepository.refreshAppSettings() }
+        viewModelScope.launch {
+            authRepository.currentUser.collect { user -> _state.update { it.copy(currentUserId = user?.id) } }
+        }
         viewModelScope.launch {
             settingsRepository.maxUploadSizeMb.collect { mb ->
                 _state.update { it.copy(maxUploadMb = mb) }
@@ -195,6 +204,33 @@ class TaskDetailViewModel @Inject constructor(
     }
 
     fun dismissPreviousValue() = _state.update { it.copy(previousValue = null) }
+
+    /**
+     * Deletes one of the user's own comments, then refreshes. Removed from the paged-in
+     * older list straight away, because a refresh only replaces the first page.
+     */
+    fun deleteComment(commentId: Int) {
+        if (_state.value.deletingCommentId != null) return
+        _state.update { it.copy(deletingCommentId = commentId) }
+        viewModelScope.launch {
+            when (val result = repository.deleteComment(projectId, taskId, commentId)) {
+                is Resource.Success -> {
+                    _state.update { state ->
+                        state.copy(
+                            deletingCommentId = null,
+                            olderComments = state.olderComments.filter { it.id != commentId },
+                            detail = state.detail?.let { d -> d.copy(comments = d.comments.filter { it.id != commentId }) },
+                        )
+                    }
+                    poll()
+                }
+                is Resource.Error -> _state.update {
+                    it.copy(deletingCommentId = null, notice = result.error.message)
+                }
+                is Resource.Loading -> Unit
+            }
+        }
+    }
 
     fun openFieldEditor() = _state.update { it.copy(editingFields = true, fieldErrors = emptyMap()) }
 

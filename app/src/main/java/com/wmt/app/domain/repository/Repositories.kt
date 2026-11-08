@@ -198,6 +198,9 @@ interface TaskRepository {
         beforeId: Int,
     ): Resource<Pair<List<Activity>, Boolean>>
 
+    /** Deletes one of your own comments. */
+    suspend fun deleteComment(projectId: Int, taskId: Int, commentId: Int): Resource<Unit>
+
     /** The full text a custom field change replaced. */
     suspend fun previousValue(activityId: Int): Resource<PreviousValue>
 
@@ -219,20 +222,6 @@ interface ProjectRepository {
     /** Global search across projects and tasks (GET /api/mobile/search). */
     suspend fun globalSearch(query: String): Resource<SearchResults>
     suspend fun projectDetail(projectId: Int): Resource<ProjectDetail>
-    suspend fun createProject(
-        name: String,
-        description: String?,
-        status: String,
-        dueDate: String?,
-    ): Resource<Project>
-    suspend fun updateProject(
-        projectId: Int,
-        name: String,
-        description: String?,
-        status: String,
-        dueDate: String?,
-    ): Resource<Project>
-    suspend fun deleteProject(projectId: Int): Resource<Unit>
 }
 
 interface NotificationRepository {

@@ -404,4 +404,21 @@ class WmtApiContractTest {
         // so "clear field 5" would never reach the server as a null.
         assertTrue(body, !body.contains("\"5\""))
     }
+
+    @Test
+    fun `deleting a comment names the task it is on, on both kinds of task`() = runTest {
+        // The task in the path is checked against the comment on the server (a nested URL
+        // is two lookups), so it has to be the comment's own task, not any task.
+        api.deleteComment(projectId = 3, taskId = 41, commentId = 9)
+        assertSent("DELETE", "/api/projects/3/tasks/41/comments/9")
+
+        api.deletePersonalComment(taskId = 41, commentId = 9)
+        assertSent("DELETE", "/api/tasks/41/comments/9")
+    }
+
+    @Test
+    fun `the project write calls are gone, because the server has none`() {
+        val names = WmtApi::class.java.declaredMethods.map { it.name }
+        assertTrue(names.none { it in setOf("createProject", "updateProject", "deleteProject") })
+    }
 }

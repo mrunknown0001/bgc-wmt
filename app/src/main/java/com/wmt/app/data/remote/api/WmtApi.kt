@@ -28,7 +28,6 @@ import com.wmt.app.data.remote.dto.SuccessResponse
 import com.wmt.app.data.remote.dto.TodoResponse
 import com.wmt.app.data.remote.dto.TodosResponse
 import com.wmt.app.data.remote.dto.UpdateTodoRequest
-import com.wmt.app.data.remote.dto.CreateProjectRequest
 import com.wmt.app.data.remote.dto.CreateTaskRequest
 import com.wmt.app.data.remote.dto.DashboardDto
 import com.wmt.app.data.remote.dto.DeviceTokenRequest
@@ -45,7 +44,6 @@ import com.wmt.app.data.remote.dto.TaskClockDto
 import com.wmt.app.data.remote.dto.MyTasksResponse
 import com.wmt.app.data.remote.dto.ProjectDetailResponse
 import com.wmt.app.data.remote.dto.ProjectDto
-import com.wmt.app.data.remote.dto.ProjectResponse
 import com.wmt.app.data.remote.dto.AddTimeLogRequest
 import com.wmt.app.data.remote.dto.AmendTimeLogRequest
 import com.wmt.app.data.remote.dto.AmendmentResponse
@@ -120,14 +118,8 @@ interface WmtApi {
     @GET("api/projects")
     suspend fun projects(@Query("search") search: String? = null): ApiList<ProjectDto>
 
-    @POST("api/projects")
-    suspend fun createProject(@Body body: CreateProjectRequest): ProjectResponse
-
-    @PUT("api/projects/{id}")
-    suspend fun updateProject(@Path("id") id: Int, @Body body: CreateProjectRequest): ProjectResponse
-
-    @DELETE("api/projects/{id}")
-    suspend fun deleteProject(@Path("id") id: Int)
+    // There is no POST/PUT/DELETE for projects in the API, deliberately: creating and
+    // setting up a project is web work. The app once declared all three, and each 404'd.
 
     @GET("api/projects/{id}")
     suspend fun projectDetail(@Path("id") id: Int): ProjectDetailResponse
@@ -153,6 +145,17 @@ interface WmtApi {
 
     @DELETE("api/projects/{projectId}/tasks/{taskId}")
     suspend fun deleteTask(@Path("projectId") projectId: Int, @Path("taskId") taskId: Int)
+
+    /** Your own comment only; anyone else's is a 403. Answers 204. */
+    @DELETE("api/projects/{projectId}/tasks/{taskId}/comments/{commentId}")
+    suspend fun deleteComment(
+        @Path("projectId") projectId: Int,
+        @Path("taskId") taskId: Int,
+        @Path("commentId") commentId: Int,
+    )
+
+    @DELETE("api/tasks/{taskId}/comments/{commentId}")
+    suspend fun deletePersonalComment(@Path("taskId") taskId: Int, @Path("commentId") commentId: Int)
 
     @PATCH("api/projects/{projectId}/tasks/{taskId}/patch")
     suspend fun patchTask(
