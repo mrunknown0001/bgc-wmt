@@ -366,4 +366,42 @@ class WmtApiContractTest {
     companion object {
         private const val BASE = "https://wmt-dev.bfcgroup.ph/"
     }
+
+    // ---- Task detail: history, previous text, custom fields ----
+
+    @Test
+    fun `older activity pages by cursor on both kinds of task`() = runTest {
+        api.olderActivities(projectId = 3, taskId = 41, beforeId = 900)
+        assertSent("GET", "/api/projects/3/tasks/41/activities?before_id=900&limit=20")
+
+        api.olderPersonalActivities(taskId = 41, beforeId = 900)
+        assertSent("GET", "/api/tasks/41/activities?before_id=900&limit=20")
+    }
+
+    @Test
+    fun `previous text is fetched by activity id`() = runTest {
+        api.previousValue(activityId = 77)
+
+        assertSent("GET", "/api/task-activities/77/previous-value")
+    }
+
+    @Test
+    fun `custom field values are put as a values object keyed by field id`() = runTest {
+        api.saveCustomFields(
+            projectId = 3,
+            taskId = 41,
+            body = com.wmt.app.data.remote.dto.CustomFieldValuesRequest(
+                mapOf("7" to 71, "12" to listOf(120, 121), "5" to null),
+            ),
+        )
+
+        assertSent("PUT", "/api/projects/3/tasks/41/custom-fields")
+        val body = lastBodyText()
+        assertTrue(body, body.contains("\"values\""))
+        assertTrue(body, body.contains("\"7\":71"))
+        assertTrue(body, body.contains("\"12\":[120,121]"))
+        // The trap the repository works around: a null entry is dropped from the body,
+        // so "clear field 5" would never reach the server as a null.
+        assertTrue(body, !body.contains("\"5\""))
+    }
 }

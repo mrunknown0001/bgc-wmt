@@ -84,6 +84,7 @@ import com.wmt.app.ui.components.PriorityBadge
 import com.wmt.app.ui.components.SkeletonList
 import com.wmt.app.ui.components.TaskStatusChip
 import com.wmt.app.ui.components.UserAvatar
+import com.wmt.app.ui.components.RestrictionNotice
 import com.wmt.app.ui.components.WmtTopAppBar
 import com.wmt.app.util.CameraCapture
 import com.wmt.app.util.DateUtils
@@ -139,6 +140,29 @@ fun TaskDetailScreen(
         }
     }
 
+    LaunchedEffect(state.notice) {
+        val message = state.notice
+        if (message != null) {
+            Toast.makeText(toastContext, message, Toast.LENGTH_LONG).show()
+            viewModel.clearNotice()
+        }
+    }
+
+    state.previousValue?.let { sheet ->
+        PreviousValueDialog(sheet = sheet, onDismiss = viewModel::dismissPreviousValue)
+    }
+
+    val fieldsDetail = state.detail
+    if (state.editingFields && fieldsDetail != null) {
+        CustomFieldsEditorDialog(
+            fields = fieldsDetail.customFields,
+            saving = state.savingFields,
+            fieldErrors = state.fieldErrors,
+            onDismiss = viewModel::closeFieldEditor,
+            onSave = viewModel::saveCustomFields,
+        )
+    }
+
     state.pausePreview?.let { preview ->
         PauseClockDialog(
             preview = preview,
@@ -152,6 +176,7 @@ fun TaskDetailScreen(
         EditTaskDialog(
             task = editing.task,
             members = editing.members,
+            canChangeAssignmentAndDates = editing.rules.canChangeAssignmentAndDates,
             saving = state.savingEdit,
             error = state.editError,
             onDismiss = {
@@ -191,10 +216,15 @@ fun TaskDetailScreen(
                     }
                 },
                 actions = {
-                    if (state.detail != null) {
+                    val rules = state.detail?.rules
+                    // Drawn from the server's answer: an edit the server would refuse is
+                    // not offered, rather than offered and then refused.
+                    if (rules?.canEdit == true && !rules.projectIsClosed) {
                         IconButton(onClick = { showEdit = true }) {
                             Icon(Icons.Default.Edit, contentDescription = "Edit task")
                         }
+                    }
+                    if (rules?.canDelete == true) {
                         IconButton(onClick = { showDeleteConfirm = true }) {
                             Icon(Icons.Default.Delete, contentDescription = "Delete task")
                         }
@@ -236,6 +266,12 @@ fun TaskDetailScreen(
                     onRequestPause = viewModel::requestPause,
                     onResumeClock = viewModel::resumeClock,
                     onOpenTimesheet = onOpenTimesheet?.let { open -> { open(viewModel.taskId) } },
+                    activities = state.allActivities,
+                    hasMoreActivities = state.hasMoreActivities,
+                    loadingMoreActivities = state.loadingMoreActivities,
+                    onLoadMoreActivities = viewModel::loadOlderActivities,
+                    onShowPreviousValue = viewModel::showPreviousValue,
+                    onEditFields = viewModel::openFieldEditor,
                 )
             }
         }
@@ -264,8 +300,15 @@ private fun TaskDetailContent(
     onRequestPause: () -> Unit,
     onResumeClock: () -> Unit,
     onOpenTimesheet: (() -> Unit)? = null,
+    activities: List<Activity> = detail.activities,
+    hasMoreActivities: Boolean = false,
+    loadingMoreActivities: Boolean = false,
+    onLoadMoreActivities: () -> Unit = {},
+    onShowPreviousValue: (activityId: Int) -> Unit = {},
+    onEditFields: () -> Unit = {},
 ) {
     val task = detail.task
+    val rules = detail.rules
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     var commentValue by remember { mutableStateOf(TextFieldValue("")) }
@@ -331,9 +374,12 @@ private fun TaskDetailContent(
         item(key = "header") {
             val done = task.statusEnum == TaskStatus.DONE
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                // Closing is held back by an open dependency or a missing attachment; the
+                // notices below say which, so the button is never refused unexplained.
+                val closeHeld = !done && (rules.isBlocked || rules.closeNeedsAttachment)
                 MarkCompleteButton(
                     done = done,
-                    enabled = !updatingStatus,
+                    enabled = !updatingStatus && !closeHeld && !rules.projectIsClosed && rules.canEdit,
                     onToggle = { onStatusSelected(if (done) TaskStatus.TO_DO else TaskStatus.DONE) },
                 )
                 Text(
@@ -354,6 +400,22 @@ private fun TaskDetailContent(
                         text = name,
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+                if (rules.projectIsClosed) {
+                    RestrictionNotice("This project is closed, so its tasks can't be changed.")
+                }
+                if (!done && rules.closeNeedsAttachment) {
+                    RestrictionNotice(
+                        "This project needs proof of work: add an attachment in a comment before closing this task.",
+                    )
+                }
+                if (rules.isBlocked || detail.dependents.isNotEmpty()) {
+                    DependencyNotices(
+                        blockedBy = detail.dependencies,
+                        blocking = detail.dependents,
+                        isBlocked = rules.isBlocked,
+                        onOpen = { id -> onOpenSubtask(task.projectId, id) },
                     )
                 }
             }
@@ -492,6 +554,20 @@ private fun TaskDetailContent(
                         }
                     }
                 }
+            }
+        }
+
+        if (detail.tags.isNotEmpty()) {
+            item(key = "tags") { TagChips(detail.tags) }
+        }
+
+        if (detail.customFields.isNotEmpty()) {
+            item(key = "custom-fields") {
+                CustomFieldsSection(
+                    fields = detail.customFields,
+                    canEdit = rules.canEditCustomFields && !rules.projectIsClosed,
+                    onEdit = onEditFields,
+                )
             }
         }
 
@@ -734,7 +810,7 @@ private fun TaskDetailContent(
             }
         }
 
-        if (timelineFilter != TimelineFilter.COMMENTS && detail.activities.isNotEmpty()) {
+        if (timelineFilter != TimelineFilter.COMMENTS && activities.isNotEmpty()) {
             if (timelineFilter == TimelineFilter.ALL) {
                 item(key = "activity-header") {
                     Text(
@@ -744,8 +820,22 @@ private fun TaskDetailContent(
                     )
                 }
             }
-            items(detail.activities, key = { "activity-${it.id}" }) { activity ->
-                ActivityRow(activity = activity)
+            items(activities, key = { "activity-${it.id}" }) { activity ->
+                ActivityRow(
+                    activity = activity,
+                    onShowPrevious = { onShowPreviousValue(activity.id) },
+                )
+            }
+            if (hasMoreActivities) {
+                item(key = "activity-load-more") {
+                    TextButton(onClick = onLoadMoreActivities, enabled = !loadingMoreActivities) {
+                        if (loadingMoreActivities) {
+                            CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
+                            Spacer(Modifier.width(8.dp))
+                        }
+                        Text("Show older activity")
+                    }
+                }
             }
         }
     }
@@ -912,7 +1002,7 @@ private fun CommentRow(comment: Comment) {
 }
 
 @Composable
-private fun ActivityRow(activity: Activity) {
+private fun ActivityRow(activity: Activity, onShowPrevious: () -> Unit = {}) {
     Column(
         modifier = Modifier.fillMaxWidth(),
         verticalArrangement = Arrangement.spacedBy(2.dp),
@@ -926,6 +1016,13 @@ private fun ActivityRow(activity: Activity) {
             style = MaterialTheme.typography.labelSmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
+        // The line above is cut at 255 characters; this is the way to the whole answer.
+        if (activity.hasPreviousValue) {
+            TextButton(
+                onClick = onShowPrevious,
+                contentPadding = PaddingValues(horizontal = 0.dp, vertical = 0.dp),
+            ) { Text("Show previous text", style = MaterialTheme.typography.labelMedium) }
+        }
     }
 }
 

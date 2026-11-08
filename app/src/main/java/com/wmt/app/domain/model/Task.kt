@@ -72,7 +72,73 @@ data class Activity(
     val description: String,
     val actor: UserSummary?,
     val createdAt: String,
+    /** The full replaced text of a free-text answer can be fetched for this row. */
+    val hasPreviousValue: Boolean = false,
 )
+
+/** The full text a custom field change replaced, fetched on demand. */
+data class PreviousValue(
+    val field: String?,
+    val value: String?,
+    val changedAt: String?,
+)
+
+/** A dependency or dependent, named and with its status, so it can be opened. */
+data class TaskLink(
+    val id: Int,
+    val title: String,
+    val status: String,
+) {
+    val statusEnum: TaskStatus get() = TaskStatus.from(status)
+    val isOpen: Boolean get() = statusEnum != TaskStatus.DONE && statusEnum != TaskStatus.CANCELLED
+}
+
+data class Tag(val id: Int, val name: String)
+
+/**
+ * What the server says this person may do to this task, before they try.
+ *
+ * Every field is the server's own answer, never worked out here: a rule restated in the
+ * app is a second copy, and the two drift. The screen reads these to draw controls as
+ * enabled, disabled or replaced by a notice saying why.
+ */
+data class TaskRules(
+    val canEdit: Boolean = true,
+    val canDelete: Boolean = true,
+    val canEditCustomFields: Boolean = false,
+    val canChangeAssignmentAndDates: Boolean = true,
+    /** Closing would be refused until a comment carries an attachment. */
+    val closeNeedsAttachment: Boolean = false,
+    /** Why this task cannot have subtasks, in the server's words; null when it can. */
+    val subtaskRestriction: String? = null,
+    /** An open dependency stands in the way of marking it done. */
+    val isBlocked: Boolean = false,
+    val projectIsClosed: Boolean = false,
+)
+
+/**
+ * One custom field on a task: its definition, this task's value, and whether the viewer
+ * is held back by a lock. The definition reuses [ApprovalCustomField] because the server
+ * stores both kinds identically, which lets one set of editors serve both screens.
+ */
+data class TaskCustomField(
+    val field: ApprovalCustomField,
+    val value: ApprovalFieldValue?,
+    val isLocked: Boolean = false,
+    /** Locked, and this person is not one of the project's managers. */
+    val lockedForMe: Boolean = false,
+) {
+    // `this.` because inside a getter a bare `field` means the property's backing field.
+    val id: Int get() = this.field.id
+
+    /** Something this screen can offer an editor for; formula and people are web-only. */
+    val isEditableType: Boolean
+        get() = this.field.typeEnum !in setOf(
+            ApprovalFieldType.FORMULA,
+            ApprovalFieldType.PEOPLE,
+            ApprovalFieldType.UNKNOWN,
+        )
+}
 
 /** Aggregate task view backing the Task Detail screen. */
 data class TaskDetail(
@@ -84,4 +150,11 @@ data class TaskDetail(
     val subtasks: List<Task> = emptyList(),
     /** The task clock, and whether this project shows one at all. */
     val clock: TaskClock = TaskClock(),
+    val rules: TaskRules = TaskRules(),
+    val dependencies: List<TaskLink> = emptyList(),
+    val dependents: List<TaskLink> = emptyList(),
+    val tags: List<Tag> = emptyList(),
+    val customFields: List<TaskCustomField> = emptyList(),
+    /** How many activity rows exist in all, so "load more" is offered only when there are. */
+    val totalActivities: Int? = null,
 )

@@ -26,6 +26,8 @@ import com.wmt.app.domain.model.ProjectDetail
 import com.wmt.app.domain.model.SearchResults
 import com.wmt.app.domain.model.Task
 import com.wmt.app.domain.model.TaskDetail
+import com.wmt.app.domain.model.PreviousValue
+import com.wmt.app.domain.model.Activity
 import com.wmt.app.domain.model.User
 import com.wmt.app.util.Resource
 import kotlinx.coroutines.flow.Flow
@@ -188,6 +190,27 @@ interface TaskRepository {
         taskId: Int,
         beforeId: Int,
     ): Resource<Pair<List<Comment>, Boolean>>
+
+    /** One older page of the activity timeline, newest first, and whether more remain. */
+    suspend fun olderActivities(
+        projectId: Int,
+        taskId: Int,
+        beforeId: Int,
+    ): Resource<Pair<List<Activity>, Boolean>>
+
+    /** The full text a custom field change replaced. */
+    suspend fun previousValue(activityId: Int): Resource<PreviousValue>
+
+    /**
+     * Saves the changed custom field values in one request, and returns the server's
+     * automation warning if a rule the save triggered could not run. The caller reloads
+     * the task afterwards: the save also writes activity rows and may fire rules.
+     */
+    suspend fun saveCustomFields(
+        projectId: Int,
+        taskId: Int,
+        changes: Map<Int, Any?>,
+    ): Resource<String?>
 }
 
 interface ProjectRepository {

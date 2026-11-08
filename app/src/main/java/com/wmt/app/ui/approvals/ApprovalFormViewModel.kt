@@ -5,6 +5,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.wmt.app.domain.model.ApprovalCustomField
 import com.wmt.app.domain.model.ApprovalFieldInput
+import com.wmt.app.domain.model.toInput
 import com.wmt.app.domain.model.ApprovalFieldType
 import com.wmt.app.domain.model.ApprovalFieldValue
 import com.wmt.app.domain.model.ApprovalSection
@@ -247,13 +248,3 @@ private fun List<ApprovalCustomField>.defaults(): Map<Int, ApprovalFieldInput> =
     filter { !it.isReadOnly && it.defaultValue != null }
         .associate { it.id to ApprovalFieldInput.Text(it.defaultValue) }
 
-/** A stored value as something the form can edit, in the shape its type is sent back in. */
-private fun ApprovalFieldValue.toInput(field: ApprovalCustomField): ApprovalFieldInput =
-    when (field.typeEnum) {
-        ApprovalFieldType.MULTI_SELECT, ApprovalFieldType.PEOPLE ->
-            ApprovalFieldInput.Selection(optionIds)
-        ApprovalFieldType.SINGLE_SELECT -> ApprovalFieldInput.Text(optionId?.toString())
-        ApprovalFieldType.NUMBER -> ApprovalFieldInput.Text(number)
-        ApprovalFieldType.DATE, ApprovalFieldType.WEEK_OF_YEAR -> ApprovalFieldInput.Text(date)
-        else -> ApprovalFieldInput.Text(text)
-    }

@@ -51,6 +51,10 @@ import com.wmt.app.data.remote.dto.AmendTimeLogRequest
 import com.wmt.app.data.remote.dto.AmendmentResponse
 import com.wmt.app.data.remote.dto.ReviewAmendmentRequest
 import com.wmt.app.data.remote.dto.TaskDetailResponse
+import com.wmt.app.data.remote.dto.PaginatedActivitiesResponse
+import com.wmt.app.data.remote.dto.PreviousValueResponse
+import com.wmt.app.data.remote.dto.CustomFieldValuesRequest
+import com.wmt.app.data.remote.dto.CustomFieldValuesResponse
 import com.wmt.app.data.remote.dto.TimeLogDeletedResponse
 import com.wmt.app.data.remote.dto.TimeLogsResponse
 import com.wmt.app.data.remote.dto.TaskDto
@@ -325,6 +329,35 @@ interface WmtApi {
         @Query("before_id") beforeId: Int,
         @Query("limit") limit: Int = 20,
     ): PaginatedCommentsResponse
+
+    // The timeline pages by cursor, like comments: the oldest id already shown, newest first.
+
+    @GET("api/projects/{projectId}/tasks/{taskId}/activities")
+    suspend fun olderActivities(
+        @Path("projectId") projectId: Int,
+        @Path("taskId") taskId: Int,
+        @Query("before_id") beforeId: Int,
+        @Query("limit") limit: Int = 20,
+    ): PaginatedActivitiesResponse
+
+    @GET("api/tasks/{taskId}/activities")
+    suspend fun olderPersonalActivities(
+        @Path("taskId") taskId: Int,
+        @Query("before_id") beforeId: Int,
+        @Query("limit") limit: Int = 20,
+    ): PaginatedActivitiesResponse
+
+    /** The full text a custom field change replaced, for a row with has_previous_value. */
+    @GET("api/task-activities/{activityId}/previous-value")
+    suspend fun previousValue(@Path("activityId") activityId: Int): PreviousValueResponse
+
+    /** Changed fields only; a locked field the viewer may not change is a 422 naming it. */
+    @PUT("api/projects/{projectId}/tasks/{taskId}/custom-fields")
+    suspend fun saveCustomFields(
+        @Path("projectId") projectId: Int,
+        @Path("taskId") taskId: Int,
+        @Body body: CustomFieldValuesRequest,
+    ): CustomFieldValuesResponse
 
     // ---- Personal to-dos ----
 
