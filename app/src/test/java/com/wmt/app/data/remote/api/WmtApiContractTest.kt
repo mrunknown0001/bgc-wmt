@@ -504,4 +504,24 @@ class WmtApiContractTest {
         assertTrue(body, body.contains("\"content\":\"\""))
         assertTrue(body, body.contains("\"title\":\"Only a title\""))
     }
+
+    @Test
+    fun `to-dos reorder by an id list and clear all by a dedicated route`() = runTest {
+        api.reorderTodos(com.wmt.app.data.remote.dto.ReorderTodosRequest(listOf(3, 1, 2)))
+        assertSent("POST", "/api/personal-todos/reorder")
+        assertTrue(lastBodyText().contains("\"ids\":[3,1,2]"))
+
+        api.clearAllTodos()
+        assertSent("DELETE", "/api/personal-todos/clear-all")
+    }
+
+    @Test
+    fun `tags are suggested from a list and set on a task by name`() = runTest {
+        api.tags()
+        assertSent("GET", "/api/tags")
+
+        api.setTaskTags(41, com.wmt.app.data.remote.dto.SetTagsRequest(listOf("fire", "urgent")))
+        assertSent("PUT", "/api/tags/task/41")
+        assertTrue(lastBodyText().contains("\"tags\":[\"fire\",\"urgent\"]"))
+    }
 }

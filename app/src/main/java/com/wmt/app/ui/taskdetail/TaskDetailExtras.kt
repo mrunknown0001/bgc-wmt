@@ -22,6 +22,7 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -268,10 +269,87 @@ private fun LinkRow(link: TaskLink, onOpen: (Int) -> Unit) {
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-fun TagChips(tags: List<Tag>) {
-    FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+fun TagChips(tags: List<Tag>, onEdit: (() -> Unit)? = null) {
+    FlowRow(
+        horizontalArrangement = Arrangement.spacedBy(6.dp),
+        verticalArrangement = Arrangement.Center,
+    ) {
         tags.forEach { tag ->
             AssistChip(onClick = {}, label = { Text(tag.name, style = MaterialTheme.typography.labelSmall) })
         }
+        if (onEdit != null) {
+            TextButton(onClick = onEdit) { Text(if (tags.isEmpty()) "Add tags" else "Edit tags") }
+        }
     }
+}
+
+/** The server's limits, so a tag is refused here rather than after the save. */
+private const val MAX_TAGS = 20
+private const val MAX_TAG_LENGTH = 40
+
+/**
+ * Sets a task's tags to exactly the chosen names. Names, not ids, because a tag nobody
+ * has used yet has no id; the server creates it on save.
+ */
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+fun TagEditorDialog(
+    current: List<Tag>,
+    suggestions: List<String>,
+    saving: Boolean,
+    onDismiss: () -> Unit,
+    onSave: (List<String>) -> Unit,
+) {
+    var names by remember(current) { mutableStateOf(current.map { it.name }) }
+    var input by remember { mutableStateOf("") }
+    val add = { name: String ->
+        val clean = name.trim().take(MAX_TAG_LENGTH)
+        if (clean.isNotEmpty() && names.none { it.equals(clean, ignoreCase = true) } && names.size < MAX_TAGS) {
+            names = names + clean
+        }
+        input = ""
+    }
+    val matches = remember(input, suggestions, names) {
+        if (input.isBlank()) emptyList() else suggestions
+            .filter { it.contains(input.trim(), ignoreCase = true) && names.none { n -> n.equals(it, ignoreCase = true) } }
+            .take(6)
+    }
+
+    AlertDialog(
+        onDismissRequest = { if (!saving) onDismiss() },
+        title = { Text("Tags") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    names.forEach { name ->
+                        AssistChip(onClick = { names = names - name }, label = { Text("$name  ✕") })
+                    }
+                }
+                OutlinedTextField(
+                    value = input,
+                    onValueChange = { value ->
+                        // A comma ends a tag, as on the web.
+                        if (value.endsWith(",")) add(value.dropLast(1)) else input = value.take(MAX_TAG_LENGTH)
+                    },
+                    placeholder = { Text("Add a tag") },
+                    singleLine = true,
+                    enabled = names.size < MAX_TAGS,
+                    supportingText = { Text(if (names.size >= MAX_TAGS) "At most $MAX_TAGS tags." else "Press + or type a comma to add.") },
+                    trailingIcon = { TextButton(onClick = { add(input) }, enabled = input.isNotBlank()) { Text("+") } },
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    matches.forEach { s -> AssistChip(onClick = { add(s) }, label = { Text(s) }) }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(enabled = !saving, onClick = {
+                // Whatever is still in the box counts, so "type a name, tap Save" works.
+                val final = if (input.isNotBlank() && names.size < MAX_TAGS) names + input.trim().take(MAX_TAG_LENGTH) else names
+                onSave(final.distinctBy { it.lowercase() })
+            }) { Text(if (saving) "Saving…" else "Save") }
+        },
+        dismissButton = { TextButton(enabled = !saving, onClick = onDismiss) { Text("Cancel") } },
+    )
 }

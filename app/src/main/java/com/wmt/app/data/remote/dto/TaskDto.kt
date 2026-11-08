@@ -309,3 +309,13 @@ data class PauseTaskRequest(
     @Json(name = "minutes") val minutes: Int,
     @Json(name = "note") val note: String? = null,
 )
+
+@JsonClass(generateAdapter = true)
+data class ReorderTodosRequest(@Json(name = "ids") val ids: List<Int>)
+
+@JsonClass(generateAdapter = true)
+data class TagsResponse(@Json(name = "tags") val tags: List<TagDto> = emptyList())
+
+@JsonClass(generateAdapter = true)
+data class SetTagsRequest(@Json(name = "tags") val tags: List<String>)
+

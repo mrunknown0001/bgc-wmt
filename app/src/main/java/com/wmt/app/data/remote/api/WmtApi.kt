@@ -49,6 +49,9 @@ import com.wmt.app.data.remote.dto.AmendTimeLogRequest
 import com.wmt.app.data.remote.dto.AmendmentResponse
 import com.wmt.app.data.remote.dto.ReviewAmendmentRequest
 import com.wmt.app.data.remote.dto.TaskDetailResponse
+import com.wmt.app.data.remote.dto.ReorderTodosRequest
+import com.wmt.app.data.remote.dto.TagsResponse
+import com.wmt.app.data.remote.dto.SetTagsRequest
 import com.wmt.app.data.remote.dto.NotesResponse
 import com.wmt.app.data.remote.dto.NoteResponse
 import com.wmt.app.data.remote.dto.NoteWriteRequest
@@ -394,6 +397,23 @@ interface WmtApi {
 
     @DELETE("api/personal-todos/clear-completed")
     suspend fun clearCompletedTodos(): SuccessResponse
+
+    @DELETE("api/personal-todos/clear-all")
+    suspend fun clearAllTodos(): SuccessResponse
+
+    /** Positions are the order of [body]'s ids. */
+    @POST("api/personal-todos/reorder")
+    suspend fun reorderTodos(@Body body: ReorderTodosRequest): SuccessResponse
+
+    // ---- Tags ----
+
+    /** Every tag in use, with how often, for suggestions. */
+    @GET("api/tags")
+    suspend fun tags(): TagsResponse
+
+    /** Sets a task's tags to exactly these names (at most 20). Needs the right to edit the task. */
+    @PUT("api/tags/task/{taskId}")
+    suspend fun setTaskTags(@Path("taskId") taskId: Int, @Body body: SetTagsRequest): TagsResponse
 
     // ---- Approvals ----
     // Projects are read-only here: creating and configuring one stays on the web.

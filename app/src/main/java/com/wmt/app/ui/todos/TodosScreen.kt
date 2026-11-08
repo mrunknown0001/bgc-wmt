@@ -1,5 +1,12 @@
 package com.wmt.app.ui.todos
 
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material.icons.rounded.KeyboardArrowDown
+import androidx.compose.material.icons.rounded.KeyboardArrowUp
+import androidx.compose.material.icons.rounded.ClearAll
+import androidx.compose.material.icons.rounded.SwapVert
+import androidx.compose.material.icons.rounded.Check
 import android.widget.Toast
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -70,6 +77,23 @@ fun TodosScreen(
         }
     }
 
+    var reordering by remember { mutableStateOf(false) }
+    var confirmClearAll by remember { mutableStateOf(false) }
+    if (confirmClearAll) {
+        AlertDialog(
+            onDismissRequest = { confirmClearAll = false },
+            title = { Text("Clear all to-dos?") },
+            text = { Text("Every to-do is deleted, open and completed. This can't be undone.") },
+            confirmButton = {
+                TextButton(onClick = {
+                    confirmClearAll = false
+                    viewModel.clearAll()
+                }) { Text("Clear all") }
+            },
+            dismissButton = { TextButton(onClick = { confirmClearAll = false }) { Text("Cancel") } },
+        )
+    }
+
     Scaffold(
         topBar = {
             WmtTopAppBar(
@@ -80,9 +104,22 @@ fun TodosScreen(
                     }
                 },
                 actions = {
+                    if (state.todos.count { !it.isCompleted } > 1) {
+                        IconButton(onClick = { reordering = !reordering }) {
+                            Icon(
+                                if (reordering) Icons.Rounded.Check else Icons.Rounded.SwapVert,
+                                contentDescription = if (reordering) "Done reordering" else "Reorder",
+                            )
+                        }
+                    }
                     if (state.todos.any { it.isCompleted }) {
                         IconButton(onClick = viewModel::clearCompleted) {
                             Icon(Icons.Rounded.DeleteSweep, contentDescription = "Clear completed")
+                        }
+                    }
+                    if (state.todos.isNotEmpty()) {
+                        IconButton(onClick = { confirmClearAll = true }) {
+                            Icon(Icons.Rounded.ClearAll, contentDescription = "Clear all")
                         }
                     }
                 },
@@ -138,6 +175,8 @@ fun TodosScreen(
                             todo = todo,
                             onToggle = { viewModel.toggle(todo) },
                             onDelete = { viewModel.delete(todo) },
+                            // Only open items move; completed ones sit at the bottom.
+                            onMove = if (reordering && !todo.isCompleted) { by -> viewModel.move(todo, by) } else null,
                         )
                         ThinDivider(startIndent = 52.dp)
                     }
@@ -152,6 +191,7 @@ private fun TodoRow(
     todo: PersonalTodo,
     onToggle: () -> Unit,
     onDelete: () -> Unit,
+    onMove: ((by: Int) -> Unit)? = null,
 ) {
     Row(
         modifier = Modifier
@@ -174,6 +214,11 @@ private fun TodoRow(
             overflow = TextOverflow.Ellipsis,
             modifier = Modifier.weight(1f),
         )
+        if (onMove != null) {
+            IconButton(onClick = { onMove(-1) }) { Icon(Icons.Rounded.KeyboardArrowUp, contentDescription = "Move up") }
+            IconButton(onClick = { onMove(1) }) { Icon(Icons.Rounded.KeyboardArrowDown, contentDescription = "Move down") }
+            return@Row
+        }
         IconButton(onClick = onDelete) {
             Icon(
                 Icons.Rounded.Close,

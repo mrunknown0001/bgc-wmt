@@ -148,6 +148,17 @@ fun TaskDetailScreen(
         }
     }
 
+    val tagsDetail = state.detail
+    if (state.editingTags && tagsDetail != null) {
+        TagEditorDialog(
+            current = tagsDetail.tags,
+            suggestions = state.tagSuggestions,
+            saving = state.savingTags,
+            onDismiss = viewModel::closeTagEditor,
+            onSave = viewModel::saveTags,
+        )
+    }
+
     state.previousValue?.let { sheet ->
         PreviousValueDialog(sheet = sheet, onDismiss = viewModel::dismissPreviousValue)
     }
@@ -275,6 +286,7 @@ fun TaskDetailScreen(
                     currentUserId = state.currentUserId,
                     deletingCommentId = state.deletingCommentId,
                     onDeleteComment = viewModel::deleteComment,
+                    onEditTags = viewModel::openTagEditor,
                 )
             }
         }
@@ -312,6 +324,7 @@ private fun TaskDetailContent(
     currentUserId: Int? = null,
     deletingCommentId: Int? = null,
     onDeleteComment: (commentId: Int) -> Unit = {},
+    onEditTags: () -> Unit = {},
 ) {
     val task = detail.task
     val rules = detail.rules
@@ -578,8 +591,9 @@ private fun TaskDetailContent(
             }
         }
 
-        if (detail.tags.isNotEmpty()) {
-            item(key = "tags") { TagChips(detail.tags) }
+        val canTag = rules.canEdit && !rules.projectIsClosed
+        if (detail.tags.isNotEmpty() || canTag) {
+            item(key = "tags") { TagChips(detail.tags, onEdit = if (canTag) onEditTags else null) }
         }
 
         if (detail.customFields.isNotEmpty()) {

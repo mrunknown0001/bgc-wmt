@@ -62,6 +62,10 @@ data class TaskDetailUiState(
     val currentUserId: Int? = null,
     /** A comment delete in flight, so its button waits rather than queueing presses. */
     val deletingCommentId: Int? = null,
+    val editingTags: Boolean = false,
+    val savingTags: Boolean = false,
+    /** Tag names already in use, for suggestions; empty until the editor first opens. */
+    val tagSuggestions: List<String> = emptyList(),
 ) {
     /** First page plus paged-in older rows, de-duplicated after a refresh. */
     val allActivities: List<Activity>
@@ -204,6 +208,39 @@ class TaskDetailViewModel @Inject constructor(
     }
 
     fun dismissPreviousValue() = _state.update { it.copy(previousValue = null) }
+
+    fun openTagEditor() {
+        _state.update { it.copy(editingTags = true) }
+        if (_state.value.tagSuggestions.isEmpty()) {
+            viewModelScope.launch {
+                val result = repository.tagSuggestions()
+                if (result is Resource.Success) _state.update { it.copy(tagSuggestions = result.data) }
+            }
+        }
+    }
+
+    fun closeTagEditor() = _state.update { it.copy(editingTags = false) }
+
+    /** Sets the task's tags to exactly [names], then refreshes. */
+    fun saveTags(names: List<String>) {
+        _state.update { it.copy(savingTags = true) }
+        viewModelScope.launch {
+            when (val result = repository.setTags(taskId, names)) {
+                is Resource.Success -> {
+                    _state.update { state ->
+                        state.copy(
+                            savingTags = false,
+                            editingTags = false,
+                            detail = state.detail?.copy(tags = result.data),
+                        )
+                    }
+                    poll()
+                }
+                is Resource.Error -> _state.update { it.copy(savingTags = false, notice = result.error.message) }
+                is Resource.Loading -> Unit
+            }
+        }
+    }
 
     /**
      * Deletes one of the user's own comments, then refreshes. Removed from the paged-in

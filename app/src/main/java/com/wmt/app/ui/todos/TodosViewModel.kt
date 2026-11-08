@@ -107,12 +107,32 @@ class TodosViewModel @Inject constructor(
         }
     }
 
+    /** Everything, done or not. The screen asks first; this does not. */
+    fun clearAll() {
+        _state.update { it.copy(todos = emptyList(), message = "All to-dos cleared") }
+        viewModelScope.launch {
+            if (repository.clearAll() is Resource.Error) load()
+        }
+    }
+
+    /** Moves an open to-do one place up (-1) or down (+1), and saves the new order. */
+    fun move(todo: PersonalTodo, by: Int) {
+        val before = _state.value.todos
+        val after = TodoOrder.move(before, todo.id, by)
+        if (after.map { it.id } == before.map { it.id }) return
+        _state.update { it.copy(todos = after) }
+        viewModelScope.launch {
+            // A failed save puts the server's order back rather than leaving a lie on screen.
+            if (repository.reorder(after.map { it.id }) is Resource.Error) load()
+        }
+    }
+
     fun clearError() = _state.update { it.copy(error = null) }
 
     fun clearMessage() = _state.update { it.copy(message = null) }
 
     private companion object {
         /** Open items first (by position), completed at the bottom. */
-        val todoOrder = compareBy<PersonalTodo>({ it.isCompleted }, { it.position })
+        val todoOrder = TodoOrder.comparator
     }
 }

@@ -26,6 +26,7 @@ import com.wmt.app.domain.model.ProjectDetail
 import com.wmt.app.domain.model.SearchResults
 import com.wmt.app.domain.model.Task
 import com.wmt.app.domain.model.TaskDetail
+import com.wmt.app.domain.model.Tag
 import com.wmt.app.domain.model.Note
 import com.wmt.app.domain.model.NoteList
 import com.wmt.app.domain.model.NoteScope
@@ -215,6 +216,12 @@ interface TaskRepository {
         page: Int,
     ): Resource<TimeCorrections>
 
+    /** Every tag name in use, for suggestions. */
+    suspend fun tagSuggestions(): Resource<List<String>>
+
+    /** Sets a task's tags to exactly [names]; returns them as the server stored them. */
+    suspend fun setTags(taskId: Int, names: List<String>): Resource<List<Tag>>
+
     /** Deletes one of your own comments. */
     suspend fun deleteComment(projectId: Int, taskId: Int, commentId: Int): Resource<Unit>
 
@@ -280,6 +287,9 @@ interface TodoRepository {
     suspend fun renameTodo(id: Int, title: String): Resource<PersonalTodo>
     suspend fun deleteTodo(id: Int): Resource<Unit>
     suspend fun clearCompleted(): Resource<Unit>
+    suspend fun clearAll(): Resource<Unit>
+    /** Saves the order: positions follow [ids]. */
+    suspend fun reorder(ids: List<Int>): Resource<Unit>
 }
 
 /**

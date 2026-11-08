@@ -22,9 +22,11 @@ import com.wmt.app.domain.model.TaskTimesheet
 import com.wmt.app.domain.model.Task
 import com.wmt.app.domain.model.TaskClock
 import com.wmt.app.domain.model.TaskDetail
+import com.wmt.app.domain.model.Tag
 import com.wmt.app.domain.model.CorrectionTab
 import com.wmt.app.domain.model.TimeCorrections
 import com.wmt.app.data.remote.dto.CustomFieldValuesRequest
+import com.wmt.app.data.remote.dto.SetTagsRequest
 import com.wmt.app.domain.model.PreviousValue
 import com.wmt.app.domain.model.Activity
 import com.wmt.app.domain.repository.TaskRepository
@@ -287,6 +289,12 @@ class TaskRepositoryImpl @Inject constructor(
     ): Resource<TimeCorrections> = safeApiCall(moshi) {
         api.timeCorrections(tab = tab?.raw, status = status, page = page).toDomain()
     }
+
+    override suspend fun tagSuggestions(): Resource<List<String>> =
+        safeApiCall(moshi) { api.tags().tags.map { it.name } }
+
+    override suspend fun setTags(taskId: Int, names: List<String>): Resource<List<Tag>> =
+        safeApiCall(moshi) { api.setTaskTags(taskId, SetTagsRequest(names)).tags.map { it.toDomain() } }
 
     override suspend fun deleteComment(projectId: Int, taskId: Int, commentId: Int): Resource<Unit> =
         safeApiCall(moshi) {
