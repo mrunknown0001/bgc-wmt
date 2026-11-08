@@ -20,6 +20,10 @@ import androidx.core.view.WindowCompat
 
 private fun lightSchemeFor(accent: Accent): ColorScheme {
     val a = accent.accentColors(dark = false, surface = Surface)
+    // Errors stay red whatever the accent is. The pair is derived the same way
+    // as everything else, so "red" cannot quietly mean "unreadable red".
+    val error = StatusRed.toHsl().darkenUntilReadable(on = Surface)
+    val errorBox = badgeColorsOn(StatusRed, Surface)
     return lightColorScheme(
         primary = a.primary,
         onPrimary = a.onPrimary,
@@ -40,23 +44,26 @@ private fun lightSchemeFor(accent: Accent): ColorScheme {
         surfaceVariant = SurfaceSoft,
         onSurfaceVariant = InkMuted,
         surfaceTint = a.primary,
-        surfaceContainerLowest = Color.White,
+        surfaceContainerLowest = Surface,
         surfaceContainerLow = SurfaceSofter,
         surfaceContainer = SurfaceSoft,
-        surfaceContainerHigh = Color(0xFFEFEFF2),
-        surfaceContainerHighest = Color(0xFFE9E9ED),
-        outline = Color(0xFFC9CBD1),
+        surfaceContainerHigh = SurfaceHigh,
+        surfaceContainerHighest = SurfaceHighest,
+        outline = Outline,
         outlineVariant = OutlineSoft,
-        error = StatusRed,
+        error = error,
         onError = Color.White,
-        errorContainer = Color(0xFFFCE4E4),
-        onErrorContainer = Color(0xFF5A1414),
+        errorContainer = errorBox.container,
+        onErrorContainer = errorBox.content,
         scrim = Color.Black,
     )
 }
 
 private fun darkSchemeFor(accent: Accent): ColorScheme {
     val a = accent.accentColors(dark = true, surface = SurfaceDark)
+    val errorHsl = StatusRed.toHsl()
+    val error = errorHsl.lightenUntilReadable(on = SurfaceDark)
+    val errorBox = badgeColorsOn(StatusRed, SurfaceDark)
     return darkColorScheme(
         primary = a.primary,
         onPrimary = a.onPrimary,
@@ -77,17 +84,19 @@ private fun darkSchemeFor(accent: Accent): ColorScheme {
         surfaceVariant = SurfaceSoftDark,
         onSurfaceVariant = OnSurfaceMutedDark,
         surfaceTint = a.primary,
-        surfaceContainerLowest = Color(0xFF141517),
-        surfaceContainerLow = Color(0xFF202124),
+        surfaceContainerLowest = InkDark,
+        surfaceContainerLow = SurfaceDark,
         surfaceContainer = SurfaceSoftDark,
-        surfaceContainerHigh = Color(0xFF333438),
-        surfaceContainerHighest = Color(0xFF3D3E43),
-        outline = Color(0xFF55565C),
+        // The ramp gives four steps on this side, so the top two elevations
+        // share one. Better a repeated step than a hex invented between them.
+        surfaceContainerHigh = SurfaceHighDark,
+        surfaceContainerHighest = SurfaceHighDark,
+        outline = OutlineDarkStrong,
         outlineVariant = OutlineDark,
-        error = Color(0xFFFF897D),
-        onError = Color(0xFF5A1414),
-        errorContainer = Color(0xFF5C1A1A),
-        onErrorContainer = Color(0xFFFFDAD5),
+        error = error,
+        onError = errorHsl.darkenUntilReadable(on = error),
+        errorContainer = errorBox.container,
+        onErrorContainer = errorBox.content,
         scrim = Color.Black,
     )
 }
