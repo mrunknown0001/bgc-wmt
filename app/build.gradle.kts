@@ -1,3 +1,5 @@
+import java.util.Properties
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
@@ -6,6 +8,22 @@ plugins {
     alias(libs.plugins.hilt)
     alias(libs.plugins.google.services)
 }
+
+// Release signing is configured from keystore.properties, which is deliberately not in
+// the repository: a signing key is a credential, and losing control of it is worse than
+// losing it outright. Copy keystore.properties.sample, fill it in, and keep the .jks
+// somewhere backed up -- if that file is lost, no future build can ever update an
+// installed app, because Android identifies an app by the key that signed it.
+//
+// Absent the file the release build is simply unsigned, as it was before, so a checkout
+// on a machine without the key still builds.
+val keystorePropertiesFile = rootProject.file("keystore.properties")
+val keystoreProperties = Properties().apply {
+    if (keystorePropertiesFile.exists()) {
+        keystorePropertiesFile.inputStream().use { load(it) }
+    }
+}
+val hasReleaseKeystore = keystoreProperties.getProperty("storeFile") != null
 
 android {
     namespace = "com.wmt.app"
@@ -22,17 +40,37 @@ android {
         vectorDrawables { useSupportLibrary = true }
     }
 
+    signingConfigs {
+        if (hasReleaseKeystore) {
+            create("release") {
+                storeFile = rootProject.file(keystoreProperties.getProperty("storeFile"))
+                storePassword = keystoreProperties.getProperty("storePassword")
+                keyAlias = keystoreProperties.getProperty("keyAlias")
+                keyPassword = keystoreProperties.getProperty("keyPassword")
+            }
+        }
+    }
+
     buildTypes {
         debug {
             // Default base URL can still be changed at runtime in the Server Setup screen.
             isMinifyEnabled = false
         }
         release {
-            isMinifyEnabled = false
+            // R8 on: the app ships smaller, and the rules it needs are in
+            // proguard-rules.pro. The risk it carries is specific -- a stripped Moshi
+            // adapter is invisible at build time and crashes on the first screen that
+            // parses that response -- so a release build wants a run-through, not just
+            // a green compile.
+            isMinifyEnabled = true
+            isShrinkResources = true
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
+            if (hasReleaseKeystore) {
+                signingConfig = signingConfigs.getByName("release")
+            }
         }
     }
     compileOptions {

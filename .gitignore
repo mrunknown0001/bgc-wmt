@@ -13,3 +13,9 @@
 .externalNativeBuild
 .cxx
 local.properties
+
+# Release signing. The key itself and the passwords that open it never go in
+# the repository; see keystore.properties.sample.
+keystore.properties
+*.jks
+*.keystore
