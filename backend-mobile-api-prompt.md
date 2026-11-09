@@ -94,6 +94,37 @@ Mirror the web `TaskSectionController` under the API:
 
 - `GET /api/calendar?month=YYYY-MM` → `{tasks: [Task]}` — tasks due that month that the user is assigned to OR collaborates on (mobile's calendar currently only sees assigned tasks), including personal tasks. Reuse `MyTaskController` serialization.
 
+## Item 13 — My Personnel: one person's work (a mobile screen is waiting on this)
+
+The web's My Personnel page links each person to a page of their work. There is no
+API twin of it, so a row in the app's My people list is inert — the one place the app
+shows people it cannot then open.
+
+- `GET /api/my-personnel/{user}` → the same page of work the web page renders, for one
+  person.
+- **Call the same private builder the web page renders from** (convention 5). Do not
+  rebuild the query. The whole point of this endpoint is that the phone shows the same
+  set as the web, and a second query starts drifting from the first the moment either
+  one is touched.
+- **Same authorisation as the web page**: a head or leader sees only their own people,
+  anyone else gets 403. The app already hides My people unless `GET /api/my-personnel`
+  succeeds, so a 403 here is an answer rather than a surprise.
+- **Register the literal route before the wildcard.** `/api/my-personnel/overdue`
+  already exists and would otherwise be swallowed as `{user}` = "overdue". Same shape
+  as convention 1, in a new place.
+- Response: a plain object, no envelope. The person as `{id, name, position}`, the
+  figures the list already shows (`open_tasks`, `overdue_tasks`, `covered_by`), and
+  their tasks serialized exactly as `MyTaskController` does — **including `project_id`
+  on every task** (convention 3): null for a personal task, never omitted.
+- If the web page shows more than tasks — workload, recent activity — return it in the
+  shape the web builder already produces and say so in your summary. The mobile screen
+  will be written against whatever this answers with, so it is better to send what the
+  page has than to trim it to a guess.
+
+The mobile half is deliberately not written yet. Building it against an invented shape,
+or faking it by filtering an existing endpoint, would show a different set of work than
+the web shows for the same person — which is worse than the row staying inert.
+
 ## After implementing
 
 - Run the test suite.
