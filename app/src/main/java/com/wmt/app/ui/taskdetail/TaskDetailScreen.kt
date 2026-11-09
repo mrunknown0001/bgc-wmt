@@ -271,6 +271,7 @@ fun TaskDetailScreen(
                     hasMoreComments = state.hasMoreComments,
                     loadingMoreComments = state.loadingMoreComments,
                     maxUploadMb = state.maxUploadMb,
+                    maxVideoUploadMb = state.maxVideoUploadMb,
                     updatingStatus = state.updatingStatus,
                     postingComment = state.postingComment,
                     contentPadding = innerPadding,
@@ -313,6 +314,7 @@ private fun TaskDetailContent(
     hasMoreComments: Boolean,
     loadingMoreComments: Boolean,
     maxUploadMb: Int,
+    maxVideoUploadMb: Int,
     updatingStatus: Boolean,
     postingComment: Boolean,
     contentPadding: PaddingValues,
@@ -368,11 +370,14 @@ private fun TaskDetailContent(
         ActivityResultContracts.OpenMultipleDocuments(),
     ) { uris ->
         if (uris.isNotEmpty()) {
-            val (accepted, tooBig) = uris.partition { fitsUploadLimit(context, it, maxUploadMb) }
+            val (accepted, tooBig) = uris.partition {
+                fitsUploadLimit(context, it, maxUploadMb, maxVideoUploadMb)
+            }
             if (tooBig.isNotEmpty()) {
                 Toast.makeText(
                     context,
-                    "Too large — videos are limited to 50MB, other files to ${maxUploadMb}MB",
+                    "Too large — videos are limited to ${maxVideoUploadMb}MB, " +
+                        "other files to ${maxUploadMb}MB",
                     Toast.LENGTH_LONG,
                 ).show()
             }
@@ -1223,20 +1228,32 @@ private val ATTACHMENT_MIME_TYPES = arrayOf(
     "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
 )
 
-private const val MAX_VIDEO_BYTES = 50L * 1024 * 1024
+/**
+ * Whether a file of this type and size is worth sending.
+ *
+ * Both caps are the server's and arrive from /api/settings, rather than being written
+ * down here: a hardcoded limit is a second copy of a setting someone can change, and it
+ * fails in both directions -- refusing a file the server would now take, or accepting
+ * one it will reject after the upload has finished.
+ *
+ * Separate from [fitsUploadLimit] because that part needs a ContentResolver and this
+ * part is the part worth testing.
+ */
+internal fun acceptsUpload(mime: String, sizeBytes: Long, maxUploadMb: Int, maxVideoMb: Int): Boolean =
+    when {
+        mime.startsWith("video/") -> sizeBytes <= maxVideoMb.toLong() * 1024 * 1024
+        // Oversized images get transcoded/downscaled at upload; only hard-reject other types.
+        mime.startsWith("image/") -> true
+        else -> sizeBytes <= maxUploadMb.toLong() * 1024 * 1024
+    }
 
-/** Client-side size check: videos ≤ 50MB, other files ≤ the server's max_upload_size setting. */
-private fun fitsUploadLimit(context: Context, uri: Uri, maxUploadMb: Int): Boolean {
+/** Client-side size check against the server's two caps. */
+private fun fitsUploadLimit(context: Context, uri: Uri, maxUploadMb: Int, maxVideoMb: Int): Boolean {
     val size = context.contentResolver.query(uri, arrayOf(OpenableColumns.SIZE), null, null, null)
         ?.use { cursor -> if (cursor.moveToFirst() && !cursor.isNull(0)) cursor.getLong(0) else null }
         ?: return true // size unknown — let the server decide
     val mime = context.contentResolver.getType(uri) ?: "application/octet-stream"
-    return if (mime.startsWith("video/")) {
-        size <= MAX_VIDEO_BYTES
-    } else {
-        // Oversized images get transcoded/downscaled at upload; only hard-reject other types.
-        mime.startsWith("image/") || size <= maxUploadMb.toLong() * 1024 * 1024
-    }
+    return acceptsUpload(mime, size, maxUploadMb, maxVideoMb)
 }
 
 private fun attachmentDisplayName(context: Context, uri: Uri): String? =

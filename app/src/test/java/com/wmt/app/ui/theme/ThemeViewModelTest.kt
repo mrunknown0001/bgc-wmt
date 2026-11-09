@@ -33,6 +33,7 @@ class ThemeViewModelTest {
     ) : SettingsRepository {
         override val serverUrl: Flow<String?> = emptyFlow()
         override val maxUploadSizeMb: Flow<Int> = flowOf(10)
+        override val videoMaxUploadSizeMb: Flow<Int> = flowOf(50)
         override suspend fun checkHealth(baseUrl: String): Resource<Unit> = Resource.Success(Unit)
         override suspend fun saveServerUrl(baseUrl: String) = Unit
         override suspend fun clearServerUrl() = Unit

@@ -48,6 +48,7 @@ class PreferencesManager @Inject constructor(
         val NOTIF_PREFS = stringPreferencesKey("notif_prefs")
         val THEME_MODE = stringPreferencesKey("theme_mode")
         val MAX_UPLOAD_MB = intPreferencesKey("max_upload_mb")
+        val VIDEO_MAX_UPLOAD_MB = intPreferencesKey("video_max_upload_mb")
         val PRIMARY_COLOR = stringPreferencesKey("primary_color")
     }
 
@@ -126,6 +127,13 @@ class PreferencesManager @Inject constructor(
 
     suspend fun saveMaxUploadSizeMb(mb: Int) {
         context.dataStore.edit { it[Keys.MAX_UPLOAD_MB] = mb.coerceAtLeast(1) }
+    }
+
+    /** Server's separate cap for video, which is larger than the general one. */
+    val videoMaxUploadSizeMb: Flow<Int> = prefs.map { it[Keys.VIDEO_MAX_UPLOAD_MB] ?: 50 }
+
+    suspend fun saveVideoMaxUploadSizeMb(mb: Int) {
+        context.dataStore.edit { it[Keys.VIDEO_MAX_UPLOAD_MB] = mb.coerceAtLeast(1) }
     }
 
     /**

@@ -37,8 +37,10 @@ data class TaskDetailUiState(
     val olderComments: List<Comment> = emptyList(),
     val hasMoreComments: Boolean = false,
     val loadingMoreComments: Boolean = false,
-    /** Server-configured general attachment cap (videos have a fixed 50MB cap). */
+    /** Server-configured general attachment cap. */
     val maxUploadMb: Int = 10,
+    /** The server's separate, larger cap for video. */
+    val maxVideoUploadMb: Int = 50,
     /** A clock action is in flight; the buttons wait rather than queueing presses. */
     val clockBusy: Boolean = false,
     /** Non-null while the pause dialog is open, holding what the server would record. */
@@ -120,6 +122,11 @@ class TaskDetailViewModel @Inject constructor(
         viewModelScope.launch {
             settingsRepository.maxUploadSizeMb.collect { mb ->
                 _state.update { it.copy(maxUploadMb = mb) }
+            }
+        }
+        viewModelScope.launch {
+            settingsRepository.videoMaxUploadSizeMb.collect { mb ->
+                _state.update { it.copy(maxVideoUploadMb = mb) }
             }
         }
     }
