@@ -61,3 +61,12 @@ fun ApprovalStepStatusBadge(status: ApprovalStepStatus, modifier: Modifier = Mod
     val colors = status.badgeColors()
     Pill(status.label, colors.container, colors.content, modifier)
 }
+
+/**
+ * The text inside a count badge: the number up to 99, then "99+". The web's nav badges
+ * and tab title say the same, so the two never disagree about a large count -- and a
+ * plain "99" would read as exactly ninety-nine.
+ */
+fun countBadgeLabel(count: Int): String = if (count > MAX_BADGE_COUNT) "$MAX_BADGE_COUNT+" else count.toString()
+
+private const val MAX_BADGE_COUNT = 99
