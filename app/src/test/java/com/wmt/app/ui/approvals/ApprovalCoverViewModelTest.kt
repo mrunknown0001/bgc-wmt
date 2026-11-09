@@ -58,6 +58,9 @@ class ApprovalCoverViewModelTest {
 
         override suspend fun personnelOverdue(): Resource<PersonnelOverdue> =
             error("not used by the cover screen")
+
+        override suspend fun personOverview(userId: Int): Resource<com.wmt.app.domain.model.PersonOverview> =
+            error("not used by the cover screen")
     }
 
     private class FakeAuth(private val user: User?) : AuthRepository {

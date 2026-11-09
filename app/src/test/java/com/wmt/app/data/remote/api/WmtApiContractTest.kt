@@ -466,6 +466,10 @@ class WmtApiContractTest {
 
         api.personnelOverdue()
         assertSent("GET", "/api/my-personnel/overdue")
+
+        // One person, by id; the server takes numbers only there, so "overdue" stays the list.
+        api.personOverview(17)
+        assertSent("GET", "/api/my-personnel/17")
     }
 
     // ---- Notes ----

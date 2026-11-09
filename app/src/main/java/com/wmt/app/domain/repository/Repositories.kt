@@ -436,6 +436,9 @@ interface PeopleRepository {
 
     suspend fun personnelOverdue(): Resource<PersonnelOverdue>
 
+    /** One person's overview, as the web's person page shows it to this user. */
+    suspend fun personOverview(userId: Int): Resource<com.wmt.app.domain.model.PersonOverview>
+
     /** Whether to offer My people at all: asked once per session, then remembered. */
     suspend fun headsAnyone(): Boolean
 }

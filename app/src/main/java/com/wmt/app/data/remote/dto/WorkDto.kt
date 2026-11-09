@@ -230,3 +230,94 @@ data class OverdueBucketDto(
     @Json(name = "count") val count: Int = 0,
 )
 
+
+// ---- One person's overview: GET /api/my-personnel/{user} ----
+// The twin of the web's /users/{user}, built by the same server method, so these keys are
+// the page's own: camelCase where the page's props are, snake_case inside the rows.
+// The page's controls for arranging cover and handing work over are not sent.
+
+@JsonClass(generateAdapter = true)
+data class PersonOverviewResponse(
+    @Json(name = "profile") val profile: PersonProfileDto = PersonProfileDto(),
+    @Json(name = "kpis") val kpis: PersonKpisDto = PersonKpisDto(),
+    @Json(name = "upcoming") val upcoming: PersonUpcomingDto = PersonUpcomingDto(),
+    @Json(name = "delegatedAway") val delegatedAway: List<DelegatedAwayDto> = emptyList(),
+    @Json(name = "currentCover") val currentCover: CurrentCoverDto? = null,
+    @Json(name = "recentActivity") val recentActivity: List<PersonActivityDto> = emptyList(),
+)
+
+@JsonClass(generateAdapter = true)
+data class PersonProfileDto(
+    @Json(name = "id") val id: Int = 0,
+    @Json(name = "name") val name: String = "",
+    @Json(name = "email") val email: String? = null,
+    @Json(name = "position") val position: String? = null,
+    @Json(name = "is_active") val isActive: Boolean = true,
+    @Json(name = "department") val department: String? = null,
+    @Json(name = "division") val division: String? = null,
+    @Json(name = "team") val team: String? = null,
+)
+
+@JsonClass(generateAdapter = true)
+data class PersonKpisDto(
+    @Json(name = "projectsInvolved") val projectsInvolved: Int = 0,
+    @Json(name = "tasksTotal") val tasksTotal: Int = 0,
+    @Json(name = "tasksCompleted") val tasksCompleted: Int = 0,
+    @Json(name = "tasksActive") val tasksActive: Int = 0,
+    @Json(name = "tasksOverdue") val tasksOverdue: Int = 0,
+    @Json(name = "completionRate") val completionRate: Int = 0,
+    @Json(name = "onTimeRate") val onTimeRate: Int = 0,
+    @Json(name = "activity30") val activity30: Int = 0,
+    @Json(name = "lastActivityAt") val lastActivityAt: String? = null,
+)
+
+@JsonClass(generateAdapter = true)
+data class PersonUpcomingDto(
+    /** Unfinished, due today through the end of the month; each row says if it is in the week. */
+    @Json(name = "tasks") val tasks: List<PersonTaskDto> = emptyList(),
+    /** Unfinished and past due, oldest first. */
+    @Json(name = "overdue") val overdue: List<PersonTaskDto> = emptyList(),
+    @Json(name = "weekCount") val weekCount: Int = 0,
+    @Json(name = "monthCount") val monthCount: Int = 0,
+    @Json(name = "overdueCount") val overdueCount: Int = 0,
+    @Json(name = "weekEnds") val weekEnds: String? = null,
+    @Json(name = "monthEnds") val monthEnds: String? = null,
+    /** Each list is capped here; the counts above are not. */
+    @Json(name = "limit") val limit: Int = 0,
+)
+
+@JsonClass(generateAdapter = true)
+data class PersonTaskDto(
+    @Json(name = "id") val id: Int = 0,
+    @Json(name = "title") val title: String = "",
+    @Json(name = "status") val status: String = "",
+    @Json(name = "priority") val priority: String = "medium",
+    @Json(name = "due_date") val dueDate: String? = null,
+    @Json(name = "due_time") val dueTime: String? = null,
+    /** Null for a personal task. */
+    @Json(name = "project") val project: IdNameDto? = null,
+    @Json(name = "in_week") val inWeek: Boolean = false,
+    @Json(name = "days_late") val daysLate: Int? = null,
+)
+
+@JsonClass(generateAdapter = true)
+data class DelegatedAwayDto(
+    @Json(name = "task") val task: PersonTaskDto? = null,
+    @Json(name = "delegate") val delegate: String? = null,
+    @Json(name = "ends_on") val endsOn: String? = null,
+)
+
+@JsonClass(generateAdapter = true)
+data class CurrentCoverDto(
+    @Json(name = "running") val running: Boolean = false,
+    @Json(name = "period") val period: String? = null,
+    @Json(name = "delegates") val delegates: List<String> = emptyList(),
+)
+
+@JsonClass(generateAdapter = true)
+data class PersonActivityDto(
+    @Json(name = "action") val action: String? = null,
+    @Json(name = "entity") val entity: String? = null,
+    @Json(name = "description") val description: String? = null,
+    @Json(name = "created_at") val createdAt: String? = null,
+)

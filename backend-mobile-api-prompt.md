@@ -96,6 +96,15 @@ Mirror the web `TaskSectionController` under the API:
 
 ## Item 13 — My Personnel: one person's work (a mobile screen is waiting on this)
 
+**Done (2026-11-09).** `GET /api/my-personnel/{user}` returns the web page's own
+overview (`profile`, `kpis`, `upcoming`, `delegatedAway`, `currentCover`,
+`recentActivity`, and `filtered` for `?filter=`), built by the same
+`UserController::overview()` the page renders from. Access is the page's
+`canViewOverview()`, which is **wider** than the line below says: the person
+themselves, admins, executives and `view-users` holders get in too, so the app
+and the web agree. The app's person screen (`ui/people/PersonScreen.kt`) reads it.
+The original request is kept below.
+
 The web's My Personnel page links each person to a page of their work. There is no
 API twin of it, so a row in the app's My people list is inert — the one place the app
 shows people it cannot then open.

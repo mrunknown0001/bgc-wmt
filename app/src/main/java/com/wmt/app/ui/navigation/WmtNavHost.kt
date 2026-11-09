@@ -46,6 +46,7 @@ import com.wmt.app.ui.timesheet.TimeCorrectionsScreen
 import com.wmt.app.ui.approvals.ApprovalCoverScreen
 import com.wmt.app.ui.approvals.SharedRequestsScreen
 import com.wmt.app.ui.people.MyPeopleScreen
+import com.wmt.app.ui.people.PersonScreen
 import com.wmt.app.ui.notes.NoteScreen
 import com.wmt.app.ui.notes.NotesScreen
 import com.wmt.app.ui.approvals.ApprovalDetailScreen
@@ -414,6 +415,16 @@ private fun MainNavHost(
         }
         composable(MainRoutes.MY_PEOPLE) {
             MyPeopleScreen(
+                onBack = { navController.popBackStack() },
+                onOpenTask = { projectId, taskId -> navController.navigate(MainRoutes.taskDetail(projectId, taskId)) },
+                onOpenPerson = { userId -> navController.navigate(MainRoutes.person(userId)) },
+            )
+        }
+        composable(
+            route = MainRoutes.PERSON,
+            arguments = listOf(navArgument("userId") { type = NavType.IntType }),
+        ) {
+            PersonScreen(
                 onBack = { navController.popBackStack() },
                 onOpenTask = { projectId, taskId -> navController.navigate(MainRoutes.taskDetail(projectId, taskId)) },
             )

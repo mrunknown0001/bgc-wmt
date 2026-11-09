@@ -579,6 +579,10 @@ interface WmtApi {
     @GET("api/my-personnel/overdue")
     suspend fun personnelOverdue(): PersonnelOverdueResponse
 
+    /** One person's overview, the web's /users/{user}. 403 for anyone the page refuses. */
+    @GET("api/my-personnel/{userId}")
+    suspend fun personOverview(@Path("userId") userId: Int): com.wmt.app.data.remote.dto.PersonOverviewResponse
+
     // ---- Notes ----
 
     @GET("api/notes")

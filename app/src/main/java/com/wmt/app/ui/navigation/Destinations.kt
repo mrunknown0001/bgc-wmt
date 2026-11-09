@@ -41,6 +41,7 @@ object MainRoutes {
     const val TIME_CORRECTIONS = "time-corrections"
     const val APPROVAL_COVER = "approvals/cover"
     const val MY_PEOPLE = "people"
+    const val PERSON = "people/{userId}"
     const val NOTES = "notes"
     const val NOTE = "note/{noteId}"
 
@@ -52,6 +53,7 @@ object MainRoutes {
 
     fun projectDetail(projectId: Int) = "project/$projectId"
     fun taskDetail(projectId: Int, taskId: Int) = "task/$projectId/$taskId"
+    fun person(userId: Int) = "people/$userId"
     fun approvalDetail(projectId: Int, requestId: Int) = "approval/$projectId/$requestId"
 
     fun timesheet(taskId: Int) = "task/$taskId/time-logs"

@@ -122,6 +122,7 @@ class MyPeopleViewModel @Inject constructor(
 fun MyPeopleScreen(
     onBack: () -> Unit,
     onOpenTask: (projectId: Int, taskId: Int) -> Unit,
+    onOpenPerson: (userId: Int) -> Unit,
     viewModel: MyPeopleViewModel = hiltViewModel(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
@@ -152,7 +153,7 @@ fun MyPeopleScreen(
                 when {
                     state.loading -> SkeletonList()
                     error != null && state.units.isEmpty() -> ErrorView(error, { viewModel.load() })
-                    state.tab == PeopleTab.PEOPLE -> PeopleList(state.units)
+                    state.tab == PeopleTab.PEOPLE -> PeopleList(state.units, onOpenPerson)
                     else -> OverdueList(
                         overdue = state.overdue,
                         bucket = state.bucket,
@@ -166,7 +167,7 @@ fun MyPeopleScreen(
 }
 
 @Composable
-private fun PeopleList(units: List<PersonnelUnit>) {
+private fun PeopleList(units: List<PersonnelUnit>, onOpenPerson: (Int) -> Unit) {
     val rows = flatten(units)
     if (rows.isEmpty()) {
         EmptyState(title = "Nobody here yet", message = "The units you head or lead have no people in them.")
@@ -188,7 +189,7 @@ private fun PeopleList(units: List<PersonnelUnit>) {
                     modifier = Modifier.padding(start = 16.dp + (row.depth * 12).dp, end = 16.dp, top = 16.dp, bottom = 4.dp),
                 )
                 is PeopleRow.Member -> {
-                    MemberRow(row.member)
+                    MemberRow(row.member, onClick = { onOpenPerson(row.member.id) })
                     ThinDivider(startIndent = 16.dp)
                 }
             }
@@ -197,9 +198,9 @@ private fun PeopleList(units: List<PersonnelUnit>) {
 }
 
 @Composable
-private fun MemberRow(member: PersonnelMember) {
+private fun MemberRow(member: PersonnelMember, onClick: () -> Unit) {
     Row(
-        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 10.dp),
+        modifier = Modifier.fillMaxWidth().clickable(onClick = onClick).padding(horizontal = 16.dp, vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Column(Modifier.weight(1f)) {

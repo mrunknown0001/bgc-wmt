@@ -67,6 +67,9 @@ class PeopleRepositoryImpl @Inject constructor(
     override suspend fun personnelOverdue(): Resource<PersonnelOverdue> =
         safeApiCall(moshi) { api.personnelOverdue().toDomain() }
 
+    override suspend fun personOverview(userId: Int): Resource<com.wmt.app.domain.model.PersonOverview> =
+        safeApiCall(moshi) { api.personOverview(userId).toDomain() }
+
     override suspend fun headsAnyone(): Boolean {
         heads?.let { return it }
         // Only a definite answer is remembered: a network failure asks again next time.

@@ -166,3 +166,56 @@ fun NoteDetailDto.toDomain() = com.wmt.app.domain.model.Note(
     canDelete = canDelete,
     updatedAt = updatedAt,
 )
+
+fun PersonTaskDto.toDomain() = com.wmt.app.domain.model.PersonTask(
+    id = id,
+    title = title,
+    status = status,
+    priority = priority,
+    dueDate = dueDate,
+    projectId = project?.id,
+    projectName = project?.name,
+    inWeek = inWeek,
+    daysLate = daysLate,
+)
+
+fun PersonOverviewResponse.toDomain() = com.wmt.app.domain.model.PersonOverview(
+    id = profile.id,
+    name = profile.name,
+    position = profile.position?.ifBlank { null },
+    email = profile.email,
+    isActive = profile.isActive,
+    placement = listOfNotNull(profile.team, profile.department, profile.division)
+        .filter { it.isNotBlank() }
+        .joinToString(" · ")
+        .ifBlank { null },
+    openTasks = kpis.tasksActive,
+    overdueTasks = kpis.tasksOverdue,
+    completedTasks = kpis.tasksCompleted,
+    totalTasks = kpis.tasksTotal,
+    completionRate = kpis.completionRate,
+    onTimeRate = kpis.onTimeRate,
+    projectsInvolved = kpis.projectsInvolved,
+    activity30 = kpis.activity30,
+    lastActivityAt = kpis.lastActivityAt,
+    overdue = upcoming.overdue.map { it.toDomain() },
+    overdueCount = upcoming.overdueCount,
+    upcoming = upcoming.tasks.map { it.toDomain() },
+    weekCount = upcoming.weekCount,
+    monthCount = upcoming.monthCount,
+    listLimit = upcoming.limit,
+    cover = currentCover?.takeIf { it.delegates.isNotEmpty() }?.let { c ->
+        c.delegates.joinToString(", ") + (c.period?.let { " ($it)" } ?: "")
+    },
+    coverRunning = currentCover?.running == true,
+    // A row whose task has gone is dropped, as the web page drops it.
+    delegatedAway = delegatedAway.mapNotNull { d ->
+        d.task?.let { com.wmt.app.domain.model.DelegatedTask(it.toDomain(), d.delegate, d.endsOn) }
+    },
+    recentActivity = recentActivity.mapNotNull { a ->
+        val text = a.description?.ifBlank { null }
+            ?: listOfNotNull(a.action, a.entity).joinToString(" ").ifBlank { null }
+            ?: return@mapNotNull null
+        com.wmt.app.domain.model.PersonActivity(text, a.createdAt)
+    },
+)

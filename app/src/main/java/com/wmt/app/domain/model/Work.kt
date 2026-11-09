@@ -128,3 +128,56 @@ data class PersonnelOverdue(
     val capped: Boolean = false,
 )
 
+
+/** One person's overview, as the web's person page shows it to the same viewer. */
+data class PersonOverview(
+    val id: Int,
+    val name: String,
+    val position: String?,
+    val email: String?,
+    val isActive: Boolean,
+    /** "Team · Department · Division", whichever of them are set. */
+    val placement: String?,
+    val openTasks: Int,
+    val overdueTasks: Int,
+    val completedTasks: Int,
+    val totalTasks: Int,
+    val completionRate: Int,
+    val onTimeRate: Int,
+    val projectsInvolved: Int,
+    val activity30: Int,
+    val lastActivityAt: String?,
+    val overdue: List<PersonTask>,
+    val overdueCount: Int,
+    /** Due today through the end of the month; [PersonTask.inWeek] marks this week's. */
+    val upcoming: List<PersonTask>,
+    val weekCount: Int,
+    val monthCount: Int,
+    /** How many rows each list carries at most; the counts are not capped. */
+    val listLimit: Int,
+    /** "Away — covered by Dee (period)", when whole-person cover is set up. */
+    val cover: String?,
+    val coverRunning: Boolean,
+    /** Their tasks held by a stand-in right now: assigned elsewhere, owed back. */
+    val delegatedAway: List<DelegatedTask>,
+    val recentActivity: List<PersonActivity>,
+)
+
+data class PersonTask(
+    val id: Int,
+    val title: String,
+    val status: String,
+    val priority: String,
+    val dueDate: String?,
+    val projectId: Int?,
+    val projectName: String?,
+    val inWeek: Boolean,
+    val daysLate: Int?,
+) {
+    val priorityEnum: TaskPriority get() = TaskPriority.from(priority)
+    val statusEnum: TaskStatus get() = TaskStatus.from(status)
+}
+
+data class DelegatedTask(val task: PersonTask, val delegate: String?, val endsOn: String?)
+
+data class PersonActivity(val description: String, val createdAt: String?)
