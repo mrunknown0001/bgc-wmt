@@ -14,6 +14,7 @@ import com.wmt.app.domain.model.TaskStatus
 import com.wmt.app.domain.repository.AuthRepository
 import com.wmt.app.domain.repository.SettingsRepository
 import com.wmt.app.domain.repository.TaskRepository
+import com.wmt.app.ui.common.refusalToAnnounce
 import com.wmt.app.util.AppError
 import com.wmt.app.util.Resource
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -299,13 +300,17 @@ class TaskDetailViewModel @Inject constructor(
                     }
                     poll()
                 }
-                is Resource.Error -> _state.update {
-                    val validation = result.error as? AppError.Validation
-                    it.copy(
+                is Resource.Error -> _state.update { state ->
+                    // The editor renders a key only for the fields it is showing, and it
+                    // leaves out the ones locked for this person -- so a 422 against one
+                    // of those has nowhere to appear and has to be said plainly instead.
+                    val shown = CustomFieldEdits.editable(state.detail?.customFields.orEmpty())
+                        .map { field -> "values.${field.id}" }
+                        .toSet()
+                    state.copy(
                         savingFields = false,
-                        fieldErrors = validation?.fieldErrors.orEmpty(),
-                        // A refusal not tied to a field (a 403, a stale lock) still needs saying.
-                        notice = if (validation == null) result.error.message else null,
+                        fieldErrors = (result.error as? AppError.Validation)?.fieldErrors.orEmpty(),
+                        notice = refusalToAnnounce(result.error, shown),
                     )
                 }
                 is Resource.Loading -> Unit

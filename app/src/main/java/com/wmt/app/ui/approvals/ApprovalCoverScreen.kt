@@ -43,6 +43,7 @@ import com.wmt.app.domain.model.ApprovalCover
 import com.wmt.app.domain.model.PersonOption
 import com.wmt.app.domain.repository.AuthRepository
 import com.wmt.app.domain.repository.PeopleRepository
+import com.wmt.app.ui.common.refusalToAnnounce
 import com.wmt.app.ui.components.DatePickerField
 import com.wmt.app.ui.components.EmptyState
 import com.wmt.app.ui.components.ErrorView
@@ -147,26 +148,13 @@ class ApprovalCoverViewModel @Inject constructor(
                     load()
                 }
                 is Resource.Error -> _state.update {
-                    val validation = result.error as? AppError.Validation
-                    val fields = validation?.fieldErrors.orEmpty()
-                    // Only three keys have a field on the form to sit under. A refusal
-                    // keyed on anything else -- an overlap the server reports its own way
-                    // -- would otherwise be swallowed whole: the map is not empty, so no
-                    // message is raised, and no field renders it either, leaving the form
-                    // silent and the button looking broken. Anything with nowhere to go
-                    // is said out loud instead.
-                    val homeless = fields
-                        .filterKeys { key -> key !in AddCoverFields }
-                        .values.flatten().firstOrNull()
+                    // Only three keys have a field on this form to sit under; an overlap
+                    // the server reports its own way has nowhere to go and is said out
+                    // loud instead.
                     it.copy(
                         saving = false,
-                        addErrors = fields,
-                        message = when {
-                            validation == null -> result.error.message
-                            homeless != null -> homeless
-                            fields.isEmpty() -> result.error.message
-                            else -> null
-                        },
+                        addErrors = (result.error as? AppError.Validation)?.fieldErrors.orEmpty(),
+                        message = refusalToAnnounce(result.error, AddCoverFields),
                     )
                 }
                 is Resource.Loading -> Unit
