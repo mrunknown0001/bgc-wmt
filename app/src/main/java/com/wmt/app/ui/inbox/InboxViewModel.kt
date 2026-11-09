@@ -92,7 +92,9 @@ class InboxViewModel @Inject constructor(
                 },
             )
         }
-        viewModelScope.launch { repository.toggleBookmark(n.id) }
+        viewModelScope.launch {
+            if (repository.toggleBookmark(n.id) is Resource.Error) revert("That bookmark did not save.")
+        }
     }
 
     /** Archive/unarchive optimistically; archived items leave every non-archive filter. */
@@ -112,9 +114,29 @@ class InboxViewModel @Inject constructor(
             )
         }
         viewModelScope.launch {
-            if (archiving) repository.archive(n.id) else repository.unarchive(n.id)
-            repository.refreshUnreadCount()
+            val result = if (archiving) repository.archive(n.id) else repository.unarchive(n.id)
+            if (result is Resource.Error) {
+                revert(result.error.message)
+            } else {
+                repository.refreshUnreadCount()
+            }
         }
+    }
+
+    /**
+     * Puts the list back after a refused change, and says why.
+     *
+     * Both toggles move the row before asking, which is right -- they almost always
+     * succeed and waiting on the network to redraw a checkbox feels broken. The cost is
+     * that a refusal leaves the screen disagreeing with the server, silently, until
+     * something else happens to reload. This is the other half of that bargain.
+     *
+     * The paging is kept: someone who has scrolled into last month should not be pulled
+     * back to the first page because a bookmark failed.
+     */
+    private fun revert(message: String) {
+        _state.update { it.copy(error = message) }
+        load(isRefresh = false, resetPaging = false)
     }
 
     /** Silent background refresh for near-real-time updates (no spinner). */
