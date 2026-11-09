@@ -134,6 +134,33 @@ The mobile half is deliberately not written yet. Building it against an invented
 or faking it by filtering an existing endpoint, would show a different set of work than
 the web shows for the same person — which is worse than the row staying inert.
 
+## Item 14 — `personal-todos/clear-all` is shadowed by the `{todo}` route (confirmed on a device)
+
+"Clear all" on the app's My To-dos screen fails on every server it has been tried on.
+`DELETE /api/personal-todos/clear-all` comes back **404** with the body:
+
+```
+No query results for model [App\Models\PersonalTodo] clear-all
+```
+
+That is route-model binding: the literal `clear-all` route is either missing or registered
+*after* `DELETE /api/personal-todos/{todo}`, so Laravel matches the parameterised route
+first and tries to resolve a to-do whose id is the string `clear-all`.
+
+- Register the literal route **before** the parameterised one:
+  `Route::delete('personal-todos/clear-all', ...)` above `Route::delete('personal-todos/{todo}', ...)`.
+- It deletes every personal to-do belonging to the caller, done or not, and returns the
+  same `{success: true}` shape the app already expects from `clearCompleted`.
+- Add a feature test that asserts the literal path deletes the caller's to-dos and leaves
+  another user's alone — a test hitting only `{todo}` will not catch the shadowing.
+
+Unauthenticated probing cannot tell this apart from a working route: the `auth:sanctum`
+middleware answers 401 before model binding runs, so `curl` sees 401 either way. Check it
+with `php artisan route:list --path=personal-todos` and look at the order.
+
+The app side is already fixed — the refusal is shown instead of being swallowed
+(`TodosViewModel.revert`) — but nothing can actually be cleared until this route is right.
+
 ## After implementing
 
 - Run the test suite.

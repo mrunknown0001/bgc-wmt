@@ -78,40 +78,44 @@ class TodosViewModel @Inject constructor(
                 todos = st.todos
                     .map { if (it.id == todo.id) it.copy(isCompleted = completed) else it }
                     .sortedWith(todoOrder),
-                message = if (completed) "To-do completed 🎉" else "To-do reopened",
             )
         }
         viewModelScope.launch {
-            if (repository.setCompleted(todo.id, completed) is Resource.Error) load()
+            when (val result = repository.setCompleted(todo.id, completed)) {
+                is Resource.Error -> revert(result.error.message, "That to-do did not change.")
+                else -> announce(if (completed) "To-do completed 🎉" else "To-do reopened")
+            }
         }
     }
 
     fun delete(todo: PersonalTodo) {
-        _state.update { st ->
-            st.copy(todos = st.todos.filterNot { it.id == todo.id }, message = "To-do removed")
-        }
+        _state.update { st -> st.copy(todos = st.todos.filterNot { it.id == todo.id }) }
         viewModelScope.launch {
-            if (repository.deleteTodo(todo.id) is Resource.Error) load()
+            when (val result = repository.deleteTodo(todo.id)) {
+                is Resource.Error -> revert(result.error.message, "That to-do was not removed.")
+                else -> announce("To-do removed")
+            }
         }
     }
 
     fun clearCompleted() {
-        _state.update { st ->
-            st.copy(
-                todos = st.todos.filterNot { it.isCompleted },
-                message = "Completed to-dos cleared",
-            )
-        }
+        _state.update { st -> st.copy(todos = st.todos.filterNot { it.isCompleted }) }
         viewModelScope.launch {
-            if (repository.clearCompleted() is Resource.Error) load()
+            when (val result = repository.clearCompleted()) {
+                is Resource.Error -> revert(result.error.message, "The completed to-dos were not cleared.")
+                else -> announce("Completed to-dos cleared")
+            }
         }
     }
 
     /** Everything, done or not. The screen asks first; this does not. */
     fun clearAll() {
-        _state.update { it.copy(todos = emptyList(), message = "All to-dos cleared") }
+        _state.update { it.copy(todos = emptyList()) }
         viewModelScope.launch {
-            if (repository.clearAll() is Resource.Error) load()
+            when (val result = repository.clearAll()) {
+                is Resource.Error -> revert(result.error.message, "The to-dos were not cleared.")
+                else -> announce("All to-dos cleared")
+            }
         }
     }
 
@@ -123,7 +127,28 @@ class TodosViewModel @Inject constructor(
         _state.update { it.copy(todos = after) }
         viewModelScope.launch {
             // A failed save puts the server's order back rather than leaving a lie on screen.
-            if (repository.reorder(after.map { it.id }) is Resource.Error) load()
+            val result = repository.reorder(after.map { it.id })
+            if (result is Resource.Error) revert(result.error.message, "That new order did not save.")
+        }
+    }
+
+    /**
+     * The rows move as soon as they are touched, but nothing is *claimed* until the server
+     * has agreed. Announcing up front told people "All to-dos cleared" over a list that was
+     * about to reappear underneath the words.
+     */
+    private fun announce(message: String) = _state.update { it.copy(message = message) }
+
+    /**
+     * A refused change puts the server's rows back and says why. Without this the rows
+     * simply returned with nothing said, and the screen looked broken.
+     *
+     * [load] clears `error` as it starts, so the message is set after it, not before.
+     */
+    private fun revert(serverMessage: String?, fallback: String) {
+        load()
+        _state.update {
+            it.copy(message = null, error = serverMessage?.takeIf(String::isNotBlank) ?: fallback)
         }
     }
 
