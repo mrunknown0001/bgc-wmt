@@ -412,7 +412,13 @@ class TaskDetailViewModel @Inject constructor(
     fun toggleSubtask(subtaskId: Int, done: Boolean) {
         if (done) _state.update { it.copy(celebrations = it.celebrations + 1) }
         viewModelScope.launch {
-            repository.updateStatus(projectId, subtaskId, if (done) "done" else "to_do")
+            val result = repository.updateStatus(projectId, subtaskId, if (done) "done" else "to_do")
+            // A refused tick used to say nothing at all: the row simply snapped back on
+            // the refresh below, which reads as the app losing the tap rather than the
+            // server turning it down. The task's own status control already says why.
+            if (result is Resource.Error) {
+                _state.update { it.copy(error = result.error.message) }
+            }
             load()
         }
     }
