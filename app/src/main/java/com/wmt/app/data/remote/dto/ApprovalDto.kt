@@ -175,7 +175,7 @@ data class ApprovalCustomFieldDto(
      * whose value types vary by field type, so it is carried through untyped rather than
      * risking a parse failure on an unexpected shape.
      */
-    @Json(name = "config") val config: Map<String, Any?>? = null,
+    @Json(name = "config") val config: Any? = null,
     @Json(name = "options") val options: List<ApprovalFieldOptionDto> = emptyList(),
 )
 

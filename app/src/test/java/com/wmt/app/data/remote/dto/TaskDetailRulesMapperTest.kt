@@ -39,6 +39,33 @@ class TaskDetailRulesMapperTest {
         ]
     """.trimIndent()
 
+    /**
+     * Seen on a device: a single_select field whose config had never been set came back as
+     * `"config": []`, and the typed Map refused it with "Expected BEGIN_OBJECT but was
+     * BEGIN_ARRAY at path $.customFields[1].config". The task would not open at all -- and
+     * nor would any other task in that project. The fixtures above only ever used `null`
+     * and `{}`, which is how it got past them.
+     */
+    @Test
+    fun `a field whose config was never set arrives as an array and still parses`() {
+        val response = detail(
+            """
+            {"task": {"id": 1, "project_id": 57},
+             "customFields": [
+               {"id": 7, "name": "text 1", "type": "text", "position": 1, "config": null, "options": []},
+               {"id": 8, "name": "Options", "type": "single_select", "position": 2, "config": [],
+                "options": [{"id": 8, "label": "Option 1", "color": "#3b82f6", "position": 0}]}
+             ],
+             "customFieldValues": []}
+            """.trimIndent(),
+        )
+
+        val mapped = response.toDomain()
+
+        assertEquals(listOf("text 1", "Options"), mapped.customFields.map { it.field.name })
+        assertEquals("Option 1", mapped.customFields[1].field.options.single().label)
+    }
+
     @Test
     fun `an empty values collection arrives as an array and still parses`() {
         val response = detail("""{"task": {"id": 1, "project_id": 3}, $fields, "customFieldValues": []}""")

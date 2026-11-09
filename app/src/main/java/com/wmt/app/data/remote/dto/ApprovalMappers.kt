@@ -281,10 +281,12 @@ private fun isoWeekLabel(raw: String?): String? {
 }
 
 /**
- * Reads one entry out of a field config blob as display text. The blob is untyped, so a
- * number arrives as a Double and is flattened back to a plain integer where it is one.
+ * Reads one entry out of a field config blob as display text. The blob is untyped -- an
+ * empty config arrives from PHP as `[]`, not `{}` -- so anything that is not a map reads
+ * as absent. A number arrives as a Double and is flattened back to a plain integer where
+ * it is one.
  */
-private fun Map<String, Any?>?.configText(key: String): String? = when (val raw = this?.get(key)) {
+private fun Any?.configText(key: String): String? = when (val raw = (this as? Map<*, *>)?.get(key)) {
     null -> null
     is String -> raw.ifBlank { null }
     is Boolean -> raw.toString()

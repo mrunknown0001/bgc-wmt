@@ -148,7 +148,12 @@ data class TaskCustomFieldDto(
     @Json(name = "type") val type: String = "text",
     @Json(name = "is_required") val isRequired: Boolean = false,
     @Json(name = "position") val position: Int = 0,
-    @Json(name = "config") val config: Map<String, Any?>? = null,
+    /**
+     * Free-form JSON whose shape varies by field type. Untyped because an empty one
+     * arrives as `[]`, not `{}` — a Map here fails the whole task screen with
+     * "Expected BEGIN_OBJECT but was BEGIN_ARRAY" for every task in the project.
+     */
+    @Json(name = "config") val config: Any? = null,
     @Json(name = "options") val options: List<TaskFieldOptionDto> = emptyList(),
     @Json(name = "is_locked") val isLocked: Boolean = false,
     /** Locked and this person is not one of the project's managers. */
