@@ -231,6 +231,7 @@ class TaskRepositoryImpl @Inject constructor(
         recurrenceFrequency: String?,
         recurrenceInterval: Int?,
         collaboratorIds: List<Int>?,
+        parentId: Int?,
     ): Resource<Task> = safeApiCall(moshi) {
         val request = CreateTaskRequest(
             title = title,
@@ -244,6 +245,7 @@ class TaskRepositoryImpl @Inject constructor(
             recurrenceFrequency = recurrenceFrequency,
             recurrenceInterval = recurrenceInterval,
             collaboratorIds = collaboratorIds,
+            parentId = parentId,
         )
         val response = if (isPersonal(projectId)) {
             api.createPersonalTask(request)

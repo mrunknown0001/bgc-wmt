@@ -5,6 +5,7 @@ import com.wmt.app.data.remote.AttachmentPartFactory
 import com.wmt.app.data.remote.dto.ApprovalAdvanceRequest
 import com.wmt.app.data.remote.dto.AddTimeLogRequest
 import com.wmt.app.data.remote.dto.AmendTimeLogRequest
+import com.wmt.app.data.remote.dto.CreateTaskRequest
 import com.wmt.app.data.remote.dto.NotificationPreferenceRequest
 import com.wmt.app.data.remote.dto.PauseTaskRequest
 import com.wmt.app.data.remote.dto.ReviewAmendmentRequest
@@ -523,5 +524,27 @@ class WmtApiContractTest {
         api.setTaskTags(41, com.wmt.app.data.remote.dto.SetTagsRequest(listOf("fire", "urgent")))
         assertSent("PUT", "/api/tags/task/41")
         assertTrue(lastBodyText().contains("\"tags\":[\"fire\",\"urgent\"]"))
+    }
+
+    @Test
+    fun `a subtask is a task created with its parent's id`() = runTest {
+        // There is no subtask route: the parent is named in the body of the ordinary
+        // create, so the key has to be exactly the one the server reads. Get it wrong
+        // and the task is still created, just at the top level, with no error anywhere.
+        api.createTask(
+            projectId = 4,
+            body = CreateTaskRequest(title = "Order the valves", parentId = 12),
+        )
+
+        assertSent("POST", "/api/projects/4/tasks")
+        assertTrue(lastBodyText(), lastBodyText().contains("\"parent_id\":12"))
+    }
+
+    @Test
+    fun `an ordinary task carries no parent at all`() = runTest {
+        api.createTask(projectId = 4, body = CreateTaskRequest(title = "Order the valves"))
+
+        // Absent rather than null: the server treats a present parent_id as a parent.
+        assertTrue(lastBodyText(), !lastBodyText().contains("parent_id"))
     }
 }

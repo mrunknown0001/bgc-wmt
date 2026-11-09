@@ -218,6 +218,8 @@ data class CreateTaskRequest(
     @Json(name = "recurrence_frequency") val recurrenceFrequency: String? = null,
     @Json(name = "recurrence_interval") val recurrenceInterval: Int? = null,
     @Json(name = "collaborator_ids") val collaboratorIds: List<Int>? = null,
+    /** The task this one hangs under. Null for a top-level task; the server allows one level. */
+    @Json(name = "parent_id") val parentId: Int? = null,
 )
 
 /** Body for PUT /api/projects/{projectId}/tasks/{taskId} (title/status/priority required). */

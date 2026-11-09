@@ -62,6 +62,10 @@ data class TaskDetailUiState(
     val currentUserId: Int? = null,
     /** A comment delete in flight, so its button waits rather than queueing presses. */
     val deletingCommentId: Int? = null,
+    /** A subtask is being created, so the composer waits rather than queueing presses. */
+    val addingSubtask: Boolean = false,
+    /** Why the server refused a subtask, in its own words. Shown under the composer. */
+    val subtaskError: String? = null,
     val editingTags: Boolean = false,
     val savingTags: Boolean = false,
     /** Tag names already in use, for suggestions; empty until the editor first opens. */
@@ -406,6 +410,47 @@ class TaskDetailViewModel @Inject constructor(
             repository.updateStatus(projectId, subtaskId, if (done) "done" else "to_do")
             load()
         }
+    }
+
+    /**
+     * Adds a subtask under this task.
+     *
+     * The one-level rule is the server's, not ours: [TaskDetail.rules] carries a
+     * `subtaskRestriction` that lets the screen replace the composer with the reason
+     * before anyone types, and a refusal that arrives anyway is surfaced in the
+     * server's own words rather than reworded here.
+     */
+    fun addSubtask(title: String) {
+        val trimmed = title.trim()
+        if (trimmed.isEmpty() || _state.value.addingSubtask) return
+        _state.update { it.copy(addingSubtask = true, subtaskError = null) }
+        viewModelScope.launch {
+            val result = repository.createTask(
+                projectId = projectId,
+                title = trimmed,
+                status = "to_do",
+                priority = "medium",
+                description = null,
+                assignedTo = null,
+                sectionId = null,
+                dueDate = null,
+                parentId = taskId,
+            )
+            when (result) {
+                is Resource.Success -> {
+                    _state.update { it.copy(addingSubtask = false, subtaskError = null) }
+                    load()
+                }
+                is Resource.Error -> _state.update {
+                    it.copy(addingSubtask = false, subtaskError = result.error.message)
+                }
+                is Resource.Loading -> Unit
+            }
+        }
+    }
+
+    fun dismissSubtaskError() {
+        _state.update { it.copy(subtaskError = null) }
     }
 
     fun editTask(

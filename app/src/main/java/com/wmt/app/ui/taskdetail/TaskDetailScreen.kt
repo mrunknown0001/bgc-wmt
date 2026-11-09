@@ -27,6 +27,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.Send
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.AttachFile
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
@@ -50,10 +51,13 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
@@ -61,9 +65,12 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
@@ -272,6 +279,10 @@ fun TaskDetailScreen(
                     onLoadMoreComments = viewModel::loadOlderComments,
                     onToggleSubtask = viewModel::toggleSubtask,
                     onOpenSubtask = onOpenTask,
+                    onAddSubtask = viewModel::addSubtask,
+                    addingSubtask = state.addingSubtask,
+                    subtaskError = state.subtaskError,
+                    onDismissSubtaskError = viewModel::dismissSubtaskError,
                     clockBusy = state.clockBusy,
                     onStartClock = viewModel::startClock,
                     onRequestPause = viewModel::requestPause,
@@ -310,6 +321,10 @@ private fun TaskDetailContent(
     onLoadMoreComments: () -> Unit,
     onToggleSubtask: (subtaskId: Int, done: Boolean) -> Unit,
     onOpenSubtask: (projectId: Int, taskId: Int) -> Unit,
+    onAddSubtask: (title: String) -> Unit = {},
+    addingSubtask: Boolean = false,
+    subtaskError: String? = null,
+    onDismissSubtaskError: () -> Unit = {},
     clockBusy: Boolean,
     onStartClock: () -> Unit,
     onRequestPause: () -> Unit,
@@ -621,20 +636,40 @@ private fun TaskDetailContent(
             }
         }
 
-        if (detail.subtasks.isNotEmpty()) {
+        // The header shows even with no subtasks: the way to add the first one lives
+        // under it, and so does the reason when there cannot be one.
+        item(key = "subtasks-header") {
             val done = detail.subtasks.count { it.statusEnum == TaskStatus.DONE }
-            item(key = "subtasks-header") {
-                Text(
-                    text = "Subtasks ($done/${detail.subtasks.size})",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.SemiBold,
-                )
-            }
-            items(detail.subtasks, key = { "subtask-${it.id}" }) { sub ->
-                SubtaskRow(
-                    task = sub,
-                    onToggle = { checked -> onToggleSubtask(sub.id, checked) },
-                    onClick = { onOpenSubtask(sub.projectId, sub.id) },
+            Text(
+                text = if (detail.subtasks.isEmpty()) {
+                    "Subtasks"
+                } else {
+                    "Subtasks ($done/${detail.subtasks.size})"
+                },
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold,
+            )
+        }
+        items(detail.subtasks, key = { "subtask-${it.id}" }) { sub ->
+            SubtaskRow(
+                task = sub,
+                onToggle = { checked -> onToggleSubtask(sub.id, checked) },
+                onClick = { onOpenSubtask(sub.projectId, sub.id) },
+            )
+        }
+        item(key = "add-subtask") {
+            // Where the control would be, the server's reason stands instead, in its own
+            // words: restating it here would be a second copy of the rule.
+            val restriction = rules.subtaskRestriction
+            if (restriction != null) {
+                RestrictionNotice(restriction)
+            } else {
+                AddSubtaskControl(
+                    busy = addingSubtask,
+                    error = subtaskError,
+                    enabled = rules.canEdit && !rules.projectIsClosed,
+                    onAdd = onAddSubtask,
+                    onDismissError = onDismissSubtaskError,
                 )
             }
         }
@@ -923,6 +958,97 @@ private fun StatusDropdown(
                     },
                 )
             }
+        }
+    }
+}
+
+/**
+ * Adds one subtask: a quiet "Add subtask" line that opens a single field.
+ *
+ * Only a title is asked for. Everything else a task can carry is a trip to the task
+ * itself, and a subtask is usually written down mid-thought, so the cost of adding one
+ * should be a line of text and nothing more.
+ */
+@Composable
+private fun AddSubtaskControl(
+    busy: Boolean,
+    error: String?,
+    enabled: Boolean,
+    onAdd: (String) -> Unit,
+    onDismissError: () -> Unit,
+) {
+    var open by rememberSaveable { mutableStateOf(false) }
+    var title by rememberSaveable { mutableStateOf("") }
+    val focusRequester = remember { FocusRequester() }
+
+    // The field clears only once the server has taken it, so a refusal leaves the
+    // typing intact to correct rather than making it be typed again.
+    LaunchedEffect(busy, error) {
+        if (!busy && error == null && open && title.isNotBlank()) title = ""
+    }
+    LaunchedEffect(open) {
+        if (open) runCatching { focusRequester.requestFocus() }
+    }
+
+    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        if (!open) {
+            TextButton(onClick = { open = true }, enabled = enabled) {
+                Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(18.dp))
+                Spacer(Modifier.width(6.dp))
+                Text("Add subtask")
+            }
+        } else {
+            val submit = {
+                if (title.isNotBlank() && !busy) {
+                    onDismissError()
+                    onAdd(title)
+                }
+            }
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                OutlinedTextField(
+                    value = title,
+                    onValueChange = {
+                        title = it
+                        if (error != null) onDismissError()
+                    },
+                    placeholder = { Text("Subtask title") },
+                    singleLine = true,
+                    enabled = !busy,
+                    isError = error != null,
+                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+                    keyboardActions = KeyboardActions(onDone = { submit() }),
+                    modifier = Modifier
+                        .weight(1f)
+                        .focusRequester(focusRequester),
+                )
+                if (busy) {
+                    CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
+                } else {
+                    IconButton(onClick = submit, enabled = title.isNotBlank()) {
+                        Icon(Icons.AutoMirrored.Filled.Send, contentDescription = "Add subtask")
+                    }
+                }
+                IconButton(
+                    onClick = {
+                        open = false
+                        title = ""
+                        onDismissError()
+                    },
+                    enabled = !busy,
+                ) {
+                    Icon(Icons.Default.Close, contentDescription = "Cancel")
+                }
+            }
+        }
+        if (error != null) {
+            Text(
+                text = error,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.error,
+            )
         }
     }
 }

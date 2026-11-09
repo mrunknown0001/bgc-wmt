@@ -182,6 +182,8 @@ interface TaskRepository {
         recurrenceFrequency: String? = null,
         recurrenceInterval: Int? = null,
         collaboratorIds: List<Int>? = null,
+        /** Makes the new task a subtask of this one; the server allows one level of nesting. */
+        parentId: Int? = null,
     ): Resource<Task>
     suspend fun updateTask(
         projectId: Int,
