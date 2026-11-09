@@ -97,6 +97,9 @@ class NoteViewModel @Inject constructor(
     }
 
     fun load() {
+        // What comes back replaces whatever is on screen, so a save still queued against
+        // the old text would write it straight back afterwards.
+        saveJob?.cancel()
         _state.update { it.copy(loading = it.note == null, error = null) }
         viewModelScope.launch {
             when (val result = repository.note(noteId)) {
@@ -111,6 +114,9 @@ class NoteViewModel @Inject constructor(
                             body = NoteText.toText(note.content),
                             editable = note.canEdit && plain && !note.archived,
                             formattedReadOnly = note.canEdit && !plain && !note.archived,
+                            // The server's text is now what is on screen, so there is
+                            // nothing outstanding to write back.
+                            dirty = false,
                         )
                     }
                 }
@@ -179,6 +185,12 @@ class NoteViewModel @Inject constructor(
 
     fun setArchived(archived: Boolean) {
         viewModelScope.launch {
+            // Archiving makes the note read-only, and a save queued a moment ago would
+            // then be turned away by its own editable check -- so whatever was typed in
+            // the last second and a half is written first, rather than lost to the
+            // archive. Leaving the screen already does this; archiving is the same exit.
+            saveJob?.cancel()
+            if (_state.value.dirty) save()
             when (val result = repository.setArchived(noteId, archived)) {
                 is Resource.Success -> load()
                 is Resource.Error -> _state.update { it.copy(error = result.error.message) }
