@@ -72,6 +72,13 @@ data class ApprovalCoverUiState(
 )
 
 /**
+ * The keys the add-cover form has a field for. Kept next to the screen because what it
+ * means is "errors we can show in place" -- add a field to the form and it belongs here
+ * too, or its errors start being announced twice.
+ */
+private val AddCoverFields = setOf("delegate_id", "starts_on", "ends_on")
+
+/**
  * Cover for approvals while this person is away.
  *
  * The phone arranges cover for its own user only. Doing it for someone else needs
@@ -141,10 +148,25 @@ class ApprovalCoverViewModel @Inject constructor(
                 }
                 is Resource.Error -> _state.update {
                     val validation = result.error as? AppError.Validation
+                    val fields = validation?.fieldErrors.orEmpty()
+                    // Only three keys have a field on the form to sit under. A refusal
+                    // keyed on anything else -- an overlap the server reports its own way
+                    // -- would otherwise be swallowed whole: the map is not empty, so no
+                    // message is raised, and no field renders it either, leaving the form
+                    // silent and the button looking broken. Anything with nowhere to go
+                    // is said out loud instead.
+                    val homeless = fields
+                        .filterKeys { key -> key !in AddCoverFields }
+                        .values.flatten().firstOrNull()
                     it.copy(
                         saving = false,
-                        addErrors = validation?.fieldErrors.orEmpty(),
-                        message = if (validation == null) result.error.message else null,
+                        addErrors = fields,
+                        message = when {
+                            validation == null -> result.error.message
+                            homeless != null -> homeless
+                            fields.isEmpty() -> result.error.message
+                            else -> null
+                        },
                     )
                 }
                 is Resource.Loading -> Unit
