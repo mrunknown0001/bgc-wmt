@@ -1,14 +1,17 @@
 package com.wmt.app.ui.theme
 
 import android.app.Activity
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.ColorScheme
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.remember
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalView
 import androidx.core.view.WindowCompat
@@ -129,6 +132,16 @@ fun WmtTheme(
         colorScheme = colorScheme,
         typography = Typography,
         shapes = WmtShapes,
-        content = content,
-    )
+    ) {
+        // The window background underneath can only follow the *system* night setting
+        // (see res/values/themes.xml), so on a phone set to light with the app set to
+        // dark -- or the other way round -- it is the opposite brightness to the text.
+        // Screens that paint their own background never noticed; Scaffold does it for
+        // every signed-in screen. The splash, server setup and login screens do not,
+        // and their text was left all but invisible against it. Painting the theme's
+        // own background here means no screen depends on what the window happens to be.
+        Surface(modifier = Modifier.fillMaxSize(), color = colorScheme.background) {
+            content()
+        }
+    }
 }
