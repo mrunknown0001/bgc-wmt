@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Themed-icon layer (Android 13+): the launcher tints this one colour, so the
+     check is drawn in the same white as the bars rather than in amber. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M36,33h22a5,5 0,0 1,0 10h-22a5,5 0,0 1,0 -10z M46,49h26a5,5 0,0 1,0 10h-26a5,5 0,0 1,0 -10z M36,65h14a5,5 0,0 1,0 10h-14a5,5 0,0 1,0 -10z" />
+    <path
+        android:pathData="M61.5,70L66.5,75L77,64"
+        android:strokeColor="#FFFFFFFF"
+        android:strokeWidth="5.5"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round" />
+</vector>
