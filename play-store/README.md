@@ -34,7 +34,7 @@ Play Console → **Create app**:
 | Free or paid | Free (this cannot be changed later from free to paid) |
 | Declarations | Tick both: Developer Program Policies, US export laws |
 
-The package name `com.wmt.app` is set by the first upload and **can never be changed**.
+The package name `com.mrunknown0001.wmt` is set by the first upload and **can never be changed**.
 
 ## 3. App content (Policy → App content)
 

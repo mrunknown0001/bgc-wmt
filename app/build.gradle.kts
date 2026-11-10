@@ -30,7 +30,9 @@ android {
     compileSdk = 36
 
     defaultConfig {
-        applicationId = "com.wmt.app"
+        // The ID on Google Play and on the device. The Kotlin package (namespace above)
+        // stays com.wmt.app; the two do not have to match.
+        applicationId = "com.mrunknown0001.wmt"
         minSdk = 26
         targetSdk = 36
         versionCode = 3
