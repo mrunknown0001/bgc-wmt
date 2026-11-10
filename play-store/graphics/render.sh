@@ -84,3 +84,7 @@ node -e '
       });'
 node make-ico.js icon.ico .ico-16.png .ico-32.png .ico-48.png .ico-256.png
 rm -f .icon-rounded.svg .ico.html .ico-*.png
+
+# The privacy policy page on GitHub Pages uses the same icon as its favicon.
+cp icon.ico ../../docs/favicon.ico
+echo "wrote docs/favicon.ico"
