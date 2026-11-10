@@ -1,7 +1,7 @@
 [versions]
-# AGP 8.7.x is the stable line that supports the standard Kotlin plugin + KSP1 + Hilt.
+# AGP 8.9.x is the stable line that supports the standard Kotlin plugin + KSP1 + Hilt.
 # (AGP 9 forces built-in Kotlin + KSP2, which currently crashes the annotation processors.)
-agp = "8.7.3"
+agp = "8.9.3"
 kotlin = "2.0.21"
 ksp = "2.0.21-1.0.28"
 coreKtx = "1.15.0"
