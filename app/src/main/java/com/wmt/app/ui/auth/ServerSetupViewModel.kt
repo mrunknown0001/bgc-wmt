@@ -44,6 +44,17 @@ class ServerSetupViewModel @Inject constructor(
                 _state.update { it.copy(error = "Please enter a server URL.") }
                 return
             }
+            // Release builds refuse cleartext (see usesCleartextTraffic in build.gradle.kts),
+            // so say so here instead of letting the health check fail with a socket error.
+            raw.startsWith("http://") && !BuildConfig.DEBUG -> {
+                _state.update {
+                    it.copy(
+                        error = "This app only connects over a secure connection. " +
+                            "Use the server's https:// address.",
+                    )
+                }
+                return
+            }
             raw.startsWith("http://") || raw.startsWith("https://") -> raw
             else -> "https://$raw"
         }

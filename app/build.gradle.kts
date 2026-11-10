@@ -38,6 +38,10 @@ android {
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables { useSupportLibrary = true }
+
+        // Release builds talk to HTTPS servers only, which is what the Play Data safety
+        // form declares ("encrypted in transit"). Debug keeps plain HTTP for local servers.
+        manifestPlaceholders["usesCleartextTraffic"] = "false"
     }
 
     signingConfigs {
@@ -55,6 +59,7 @@ android {
         debug {
             // Default base URL can still be changed at runtime in the Server Setup screen.
             isMinifyEnabled = false
+            manifestPlaceholders["usesCleartextTraffic"] = "true"
         }
         release {
             // R8 on: the app ships smaller, and the rules it needs are in
