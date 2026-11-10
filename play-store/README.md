@@ -12,7 +12,7 @@ or a new kind of upload, revisit **Data safety** before publishing it.
 
 ## 0. Before you start
 
-- [ ] **Fill in the placeholders.** Replace `[[ORG NAME]]` and `[[CONTACT EMAIL]]` in `privacy-policy.html` and `listing.md`.
+- [x] **Developer name and contact** are filled in: MrUnknown0001, dvlpr.me@gmail.com.
 - [ ] **Host the privacy policy** on your website and check that the URL opens in a private browser window. Play rejects a link that redirects to a login page or returns a PDF download.
 - [ ] **Back up `wmt-release.jks`** and its passwords somewhere safe outside this PC, such as a password manager or company vault. With Play App Signing this key becomes your *upload key*. If you lose it, you can ask Google to reset it, but that takes days and blocks every update until it's done.
 - [ ] **Create a reviewer account** on the production WMT server (see section 3). Google's reviewers cannot get past the sign-in screen without one, and an app they can't open is rejected.

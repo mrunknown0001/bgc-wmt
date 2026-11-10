@@ -67,14 +67,13 @@ WMT needs an account on a WMT server run by your organisation. The app does not 
 
 | Field | Value |
 |---|---|
-| Email | [[CONTACT EMAIL]] |
+| Email | dvlpr.me@gmail.com |
 | Website | optional |
 | Phone | optional |
 
 ## Privacy policy
 
-The public URL where you uploaded `privacy-policy.html` (from this folder) after filling in its
-placeholders. Enter it under **Policy → App content → Privacy policy**. Play also links to it
+The public URL where you uploaded `privacy-policy.html` (from this folder). Enter it under **Policy → App content → Privacy policy**. Play also links to it
 from the store listing.
 
 ## Graphics
