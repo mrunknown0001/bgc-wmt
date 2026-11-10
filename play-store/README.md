@@ -132,9 +132,10 @@ Copy the text from `listing.md`, then upload:
   1080 × 1920 card made from a raw capture in `screenshots/raw/`. A raw 1080 × 2400 capture is
   refused because its long side is more than twice the short side.
 
-  They were captured on the staging server, and its test data shows: "sample title", "Email
-  Logging Regression Probe", "Duplicate of Duplicate of…", the misspelt "Peronal Project", and 18
-  overdue tasks. Before production, retake them on an account with tidy sample data. Capture at
+  They were captured on the staging server, and some test data still shows: the approval requests
+  "sample title" and "Email Logging Regression Probe", the task "sub task 1" in the project "sample
+  time in motion", the "DEMO —" tasks, and 18 of 19 tasks overdue. Before production, consider
+  tidying those and retaking the shots. Capture at
   1080 × 2400, replace the files in `screenshots/raw/` (same names), and run
   `bash play-store/graphics/render.sh`. Captions are set in that script.
 
