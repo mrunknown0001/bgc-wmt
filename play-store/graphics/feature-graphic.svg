@@ -1,0 +1,31 @@
+<!--
+  Play Store feature graphic, 1024x500. Google may overlay a play button in
+  the centre and crop the edges on some surfaces, so the words stay in the
+  left half and nothing important sits near the border.
+-->
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="500" viewBox="0 0 1024 500">
+  <defs>
+    <style>@font-face { font-family: "Instrument Sans"; src: url("../../app/src/main/res/font/instrument_sans.ttf"); }</style>
+    <linearGradient id="bg" x1="0" y1="0" x2="1024" y2="500" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#4F7DF7"/>
+      <stop offset="1" stop-color="#2F57D9"/>
+    </linearGradient>
+  </defs>
+  <rect width="1024" height="500" fill="url(#bg)"/>
+
+  <!-- The icon mark on the right: bars faint, the check at full strength. -->
+  <g transform="translate(620 162) scale(4.2) translate(-31 -33)" opacity="0.24" fill="#FFFFFF">
+    <rect x="31" y="33" width="32" height="10" rx="5"/>
+    <rect x="41" y="49" width="36" height="10" rx="5"/>
+    <rect x="31" y="65" width="24" height="10" rx="5"/>
+  </g>
+  <path transform="translate(620 162) scale(4.2) translate(-31 -33)" d="M61.5 70 L66.5 75 L77 64"
+        fill="none" stroke="#FFC24B" stroke-opacity="0.95" stroke-width="5.5"
+        stroke-linecap="round" stroke-linejoin="round"/>
+
+  <g font-family="'Instrument Sans', 'Segoe UI', Roboto, Arial, sans-serif" fill="#FFFFFF">
+    <text x="80" y="232" font-size="104" font-weight="700" letter-spacing="-2">WMT</text>
+    <text x="84" y="292" font-size="34" font-weight="500" opacity="0.92">Workload Management Tool</text>
+    <text x="84" y="346" font-size="26" opacity="0.78">Tasks, approvals and your team, on the go.</text>
+  </g>
+</svg>

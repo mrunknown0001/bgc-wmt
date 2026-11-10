@@ -1,0 +1,23 @@
+<!--
+  WMT app icon, master artwork. 108x108 is the Android adaptive-icon grid:
+  everything that must survive every launcher mask sits inside the 66-unit
+  circle at the centre. The Play Store icon (icon-512.png) is this file
+  rendered at 512x512; the launcher icon is the same geometry, redrawn as
+  vector drawables in app/src/main/res/drawable/ic_launcher_*.xml.
+-->
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 108 108">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="108" y2="108" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#4F7DF7"/>
+      <stop offset="1" stop-color="#2F57D9"/>
+    </linearGradient>
+  </defs>
+  <rect width="108" height="108" fill="url(#bg)"/>
+  <g fill="#FFFFFF">
+    <rect x="31" y="33" width="32" height="10" rx="5"/>
+    <rect x="41" y="49" width="36" height="10" rx="5"/>
+    <rect x="31" y="65" width="24" height="10" rx="5"/>
+  </g>
+  <path d="M61.5 70 L66.5 75 L77 64" fill="none" stroke="#FFC24B" stroke-width="5.5"
+        stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

@@ -1,0 +1,134 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>WMT Privacy Policy</title>
+<!--
+  Before uploading: replace every [[ORG NAME]] and [[CONTACT EMAIL]] below.
+  The page is self-contained (no external files), so it can be dropped on any
+  web server as-is. Its public URL is what goes into Play Console.
+-->
+<style>
+  :root {
+    --bg: #ffffff; --fg: #1e293b; --muted: #475569; --rule: #e2e8f0;
+    --accent: #2f57d9; --card: #f8fafc;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #0f172a; --fg: #e2e8f0; --muted: #94a3b8; --rule: #334155;
+      --accent: #8aa8ff; --card: #1e293b;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--fg);
+    font: 16px/1.65 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  }
+  main { max-width: 760px; margin: 0 auto; padding: 48px 20px 80px; }
+  h1 { font-size: 2rem; line-height: 1.2; margin: 0 0 8px; }
+  h2 { font-size: 1.2rem; margin: 40px 0 8px; padding-top: 16px; border-top: 1px solid var(--rule); }
+  .meta { color: var(--muted); margin: 0 0 24px; }
+  a { color: var(--accent); }
+  ul { padding-left: 1.25rem; }
+  li { margin: 4px 0; }
+  table { width: 100%; border-collapse: collapse; margin: 12px 0; font-size: 0.95rem; }
+  th, td { text-align: left; vertical-align: top; padding: 10px 12px; border-bottom: 1px solid var(--rule); }
+  th { background: var(--card); font-weight: 600; }
+  .summary { background: var(--card); border: 1px solid var(--rule); border-radius: 10px; padding: 16px 20px; }
+  .summary p { margin: 0 0 6px; }
+  @media (max-width: 560px) { th, td { padding: 8px 6px; } }
+</style>
+</head>
+<body>
+<main>
+  <h1>WMT Privacy Policy</h1>
+  <p class="meta">Effective 10 November 2026 · Applies to the WMT (Workload Management Tool) app for Android, package <code>com.wmt.app</code></p>
+
+  <div class="summary">
+    <p><strong>In short:</strong> WMT is a work app. It sends what you enter, and the photos and files you choose to attach, to your organisation's WMT server so your team can see it.</p>
+    <p>It shows no ads. It contains no analytics or tracking tools. It never sells your data.</p>
+  </div>
+
+  <h2>Who we are</h2>
+  <p>The WMT app is published by [[ORG NAME]] ("we", "us"). If you have questions about this policy or your data, contact us at <a href="mailto:[[CONTACT EMAIL]]">[[CONTACT EMAIL]]</a>.</p>
+  <p>The app is a client for a WMT server run by your employer or organisation. Your account is created by that organisation, not in the app. The organisation decides what is kept on its server and for how long.</p>
+
+  <h2>Information the app handles</h2>
+  <table>
+    <thead><tr><th>What</th><th>When and why</th></tr></thead>
+    <tbody>
+      <tr>
+        <td>Account details: your name, email address, user ID, position, department, team and role</td>
+        <td>When you sign in, your email address and password are sent to your organisation's server to check who you are. The server sends back your profile, and the app keeps a copy so it can show who is signed in. Your password is never stored on the phone.</td>
+      </tr>
+      <tr>
+        <td>Work content: tasks, comments, personal to-dos, time logs, tags, approval requests and decisions</td>
+        <td>Whatever you create or change in the app is sent to the server, where your team can see it according to your organisation's settings.</td>
+      </tr>
+      <tr>
+        <td>Photos, videos and files</td>
+        <td>Only the ones you pick, or photos you take with the camera button, are uploaded as attachments. The app does not browse your gallery or files on its own.</td>
+      </tr>
+      <tr>
+        <td>Precise location</td>
+        <td>Only when you take a photo with the in-app camera button, and only if you allow location access. The photo is stamped with where and when it was taken, and that information travels with the photo to the server. If you say no, the camera still works and the photo has no location. The app never tracks your location in the background.</td>
+      </tr>
+      <tr>
+        <td>Device push token</td>
+        <td>An identifier from Google Firebase Cloud Messaging, registered with your organisation's server so it can send you notifications. It identifies the app install, not you personally.</td>
+      </tr>
+      <tr>
+        <td>Settings on the phone</td>
+        <td>The server address, theme, colour and notification preferences are kept on the phone so the app opens the way you left it.</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h2>What we do not do</h2>
+  <ul>
+    <li>We do not show advertising or use the advertising ID.</li>
+    <li>We do not include analytics, crash-reporting or tracking tools.</li>
+    <li>We do not sell your information or share it for marketing.</li>
+    <li>We do not access your contacts, microphone, calendar or other apps.</li>
+  </ul>
+
+  <h2>Who receives it</h2>
+  <ul>
+    <li><strong>Your organisation's WMT server.</strong> Everything listed above, apart from the settings kept on the phone, goes there, along with live updates over the same secure connection.</li>
+    <li><strong>Google Firebase Cloud Messaging.</strong> Google delivers push notifications to the device. It processes the push token and the notification content as a service provider. See <a href="https://policies.google.com/privacy">Google's Privacy Policy</a>.</li>
+  </ul>
+  <p>We disclose information to anyone else only if the law requires it.</p>
+
+  <h2>Security</h2>
+  <ul>
+    <li>The app only connects to servers over HTTPS, so everything it sends and receives is encrypted in transit.</li>
+    <li>Your sign-in token is stored encrypted, under a key held in the Android Keystore.</li>
+    <li>The sign-in token and the app's local cache of work data are excluded from Android backups and device-to-device transfers.</li>
+  </ul>
+
+  <h2>Keeping and deleting your information</h2>
+  <ul>
+    <li><strong>On your phone:</strong> signing out removes your sign-in token. Uninstalling the app removes everything the app stored on the phone.</li>
+    <li><strong>On the server:</strong> your account and work content are kept for as long as your organisation keeps them. To have your account or data deleted, ask your organisation's WMT administrator, or email us at <a href="mailto:[[CONTACT EMAIL]]">[[CONTACT EMAIL]]</a> and we will pass the request on or carry it out.</li>
+  </ul>
+
+  <h2>Permissions the app asks for</h2>
+  <ul>
+    <li><strong>Notifications:</strong> to show task, comment and approval alerts.</li>
+    <li><strong>Location (precise and approximate):</strong> to geotag photos taken with the in-app camera button. This permission is optional.</li>
+    <li><strong>Internet and network state:</strong> to reach your organisation's server.</li>
+    <li><strong>Camera:</strong> the app does not ask for camera access itself. It hands the photo off to your phone's camera app.</li>
+  </ul>
+
+  <h2>Children</h2>
+  <p>WMT is a workplace tool for adults and is not directed at children under 18.</p>
+
+  <h2>Changes to this policy</h2>
+  <p>If this policy changes, we will update the effective date at the top of this page. If a change significantly affects how your information is handled, we will also announce it in the app's release notes.</p>
+
+  <h2>Contact</h2>
+  <p>[[ORG NAME]] · <a href="mailto:[[CONTACT EMAIL]]">[[CONTACT EMAIL]]</a></p>
+</main>
+</body>
+</html>
