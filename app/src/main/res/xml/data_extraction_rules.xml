@@ -1,19 +1,24 @@
-<?xml version="1.0" encoding="utf-8"?><!--
-   Sample data extraction rules file; uncomment and customize as necessary.
-   See https://developer.android.com/about/versions/12/backup-restore#xml-changes
-   for details.
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+   Backup and device-to-device transfer, Android 12 and later.
+
+   wmt_secure_prefs.xml holds the sign-in token, encrypted under a key in the
+   Android Keystore. The key never leaves the phone, so a restored copy of the
+   file cannot be decrypted on the new one and EncryptedSharedPreferences.create
+   throws as the app starts. Keep it out, and let the person sign in again.
+
+   wmt.db is only a cache of what the server holds; there is nothing to save
+   and no reason to put someone's work data into their personal Google backup.
+
+   What does carry over is the DataStore (server address, theme, accent).
 -->
 <data-extraction-rules>
     <cloud-backup>
-        <!-- TODO: Use <include> and <exclude> to control what is backed up.
-        <include .../>
-        <exclude .../>
-        -->
+        <exclude domain="sharedpref" path="wmt_secure_prefs.xml" />
+        <exclude domain="database" path="wmt.db" />
     </cloud-backup>
-    <!--
     <device-transfer>
-        <include .../>
-        <exclude .../>
+        <exclude domain="sharedpref" path="wmt_secure_prefs.xml" />
+        <exclude domain="database" path="wmt.db" />
     </device-transfer>
-    -->
 </data-extraction-rules>
