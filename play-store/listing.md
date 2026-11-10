@@ -24,7 +24,7 @@ Sign in with the account your organisation gave you.
 
 YOUR WORK, AT A GLANCE
 • Dashboard with what is due, overdue and in progress
-• My Tasks across every project you are on
+• My Tasks across every project you are on, as a list or a month calendar
 • Search across projects and tasks
 • Personal to-do list and notes, separate from project work
 • Team leads can see their people's work from My People
@@ -84,7 +84,7 @@ from the store listing.
 |---|---|---|
 | App icon | 512 × 512 PNG, ≤ 1 MB | `graphics/icon-512.png` |
 | Feature graphic | 1024 × 500 JPEG or 24-bit PNG | `graphics/feature-graphic.jpg` |
-| Phone screenshots | 2–8, PNG or JPEG, 9:16, short side ≥ 1080 px recommended | **you take these**, see README |
+| Phone screenshots | 2–8, PNG or JPEG, long side ≤ 2× short side | `screenshots/01-home.png` … `06-home-dark.png` (1080 × 1920, upload in order) |
 | 7" / 10" tablet screenshots | optional; Play shows the app as "designed for phones" without them | |
 
 Sources are `graphics/icon.svg` and `graphics/feature-graphic.svg`. Re-export them with

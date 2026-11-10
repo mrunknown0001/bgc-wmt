@@ -1,0 +1,33 @@
+<!doctype html>
+<!--
+  Store screenshot card, 1080x1920 (Play wants the long side at most twice the
+  short one; a raw 1080x2400 phone capture is 2.22:1 and is refused).
+  Rendered by play-store/graphics/render.sh as  frame.html?img=raw/x.png&cap=Caption
+-->
+<html><head><meta charset="utf-8">
+<style>
+  @font-face { font-family: "Instrument Sans"; src: url("../../app/src/main/res/font/instrument_sans.ttf"); }
+  html, body { margin: 0; width: 1080px; height: 1920px; overflow: hidden; }
+  body {
+    background: linear-gradient(135deg, #4F7DF7, #2F57D9);
+    font-family: "Instrument Sans", "Segoe UI", Roboto, sans-serif; color: #fff;
+    display: flex; flex-direction: column; align-items: center;
+  }
+  h1 {
+    margin: 120px 80px 0; height: 150px; display: flex; align-items: center;
+    font-size: 64px; line-height: 1.12; font-weight: 700; letter-spacing: -1px; text-align: center;
+  }
+  img {
+    margin-top: 60px; width: 702px; height: 1560px; border-radius: 48px;
+    box-shadow: 0 30px 80px rgba(10, 25, 80, 0.45); outline: 10px solid rgba(255,255,255,0.18);
+  }
+</style></head>
+<body>
+  <h1 id="cap"></h1>
+  <img id="shot" alt="">
+  <script>
+    const q = new URLSearchParams(location.search);
+    document.getElementById('cap').textContent = q.get('cap') || '';
+    document.getElementById('shot').src = q.get('img');
+  </script>
+</body></html>

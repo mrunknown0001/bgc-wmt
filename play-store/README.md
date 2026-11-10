@@ -128,10 +128,15 @@ Copy the text from `listing.md`, then upload:
 
 - App icon: `graphics/icon-512.png`
 - Feature graphic: `graphics/feature-graphic.jpg`
-- **Phone screenshots: at least 2**, ideally 4–6. I couldn't take these because they need a real
-  account with real-looking data. Sign in on a phone with the reviewer account and capture
-  Dashboard, My Tasks, a task with comments, Approvals, and dark mode. Avoid real employee names
-  or sensitive project details, because screenshots are public.
+- Phone screenshots: `screenshots/01-home.png` to `06-home-dark.png`, in that order. Each one is a
+  1080 × 1920 card made from a raw capture in `screenshots/raw/`. A raw 1080 × 2400 capture is
+  refused because its long side is more than twice the short side.
+
+  They were captured on the staging server, and its test data shows: "sample title", "Email
+  Logging Regression Probe", "Duplicate of Duplicate of…", the misspelt "Peronal Project", and 18
+  overdue tasks. Before production, retake them on an account with tidy sample data. Capture at
+  1080 × 2400, replace the files in `screenshots/raw/` (same names), and run
+  `bash play-store/graphics/render.sh`. Captions are set in that script.
 
 ## 5. Release
 
