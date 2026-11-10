@@ -73,7 +73,9 @@ WMT needs an account on a WMT server run by your organisation. The app does not 
 
 ## Privacy policy
 
-The public URL where you uploaded `privacy-policy.html` (from this folder). Enter it under **Policy → App content → Privacy policy**. Play also links to it
+https://mrunknown0001.github.io/bgc-wmt/privacy-policy.html
+
+Served by GitHub Pages from `docs/privacy-policy.html`. Enter it under **Policy → App content → Privacy policy**. Play also links to it
 from the store listing.
 
 ## Graphics
