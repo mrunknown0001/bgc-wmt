@@ -4,6 +4,7 @@
 #
 #   icon.svg            -> icon-512.png           (Play Console: App icon, 512x512 PNG)
 #   screenshots/raw/*.png -> screenshots/*.png     (Play Console: Phone screenshots, 1080x1920)
+#   icon.svg            -> icon.ico               (Windows / favicon: 16, 32, 48, 256 px)
 #   feature-graphic.svg -> feature-graphic.jpg    (Play Console: Feature graphic, 1024x500,
 #                                                   JPEG because Play refuses a PNG with alpha)
 #
@@ -55,3 +56,31 @@ for s in "${SHOTS[@]}"; do
     --screenshot="$(winpath "$PWD/$f")" "$url" 2>/dev/null
   echo "wrote screenshots/$f"
 done
+
+# Windows / favicon icon: same crop as the Play icon, but with rounded corners on a
+# transparent background (Windows and browsers do not round icons themselves).
+# Chrome will not paint a window below ~50 px, so each size is drawn onto a canvas of
+# that exact size inside one normal page, read back with --dump-dom, and packed.
+cd ../graphics
+sed -e 's/viewBox="0 0 108 108"/viewBox="9 9 90 90"/'     -e 's|<rect width="108" height="108" fill="url(#bg)"/>|<rect x="9" y="9" width="90" height="90" rx="20" fill="url(#bg)"/>|'     icon.svg > .icon-rounded.svg
+node -e '
+  const svg = require("fs").readFileSync(".icon-rounded.svg").toString("base64");
+  require("fs").writeFileSync(".ico.html", `<!doctype html><body><script>
+    const img = new Image();
+    img.onload = () => {
+      document.body.textContent = [16, 32, 48, 256].map((px) => {
+        const c = document.createElement("canvas"); c.width = c.height = px;
+        c.getContext("2d").drawImage(img, 0, 0, px, px);
+        return "ICO:" + px + ":" + c.toDataURL("image/png").split(",")[1];
+      }).join(" ");
+    };
+    img.src = "data:image/svg+xml;base64,${svg}";
+  </script></body>`);'
+"$CHROME" --headless=new --disable-gpu --virtual-time-budget=3000 --dump-dom "$(fileurl .ico.html)" 2>/dev/null   | node -e '
+      let s = ""; process.stdin.on("data", (d) => (s += d)).on("end", () => {
+        const found = [...s.matchAll(/ICO:(\d+):([A-Za-z0-9+\/=]+)/g)];
+        if (found.length !== 4) { console.error("canvas render failed"); process.exit(1); }
+        for (const [, px, b64] of found) require("fs").writeFileSync(`.ico-${px}.png`, Buffer.from(b64, "base64"));
+      });'
+node make-ico.js icon.ico .ico-16.png .ico-32.png .ico-48.png .ico-256.png
+rm -f .icon-rounded.svg .ico.html .ico-*.png
