@@ -1,5 +1,6 @@
 package com.wmt.app.ui.dashboard
 
+import com.wmt.app.ui.components.countBadgeLabel
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -100,7 +101,7 @@ fun DashboardScreen(
                     }
                     IconButton(onClick = onOpenInbox) {
                         if (unreadCount > 0) {
-                            BadgedBox(badge = { Badge { Text(unreadCount.coerceAtMost(99).toString()) } }) {
+                            BadgedBox(badge = { Badge { Text(countBadgeLabel(unreadCount)) } }) {
                                 Icon(Icons.Default.Notifications, contentDescription = "Notifications")
                             }
                         } else {

@@ -1,5 +1,6 @@
 package com.wmt.app.ui.navigation
 
+import com.wmt.app.ui.components.countBadgeLabel
 import androidx.compose.animation.AnimatedContentTransitionScope
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
@@ -219,7 +220,7 @@ private fun WmtBottomBar(navController: NavHostController, state: RootUiState) {
                             else -> 0
                         }
                         if (badgeCount > 0) {
-                            BadgedBox(badge = { Badge { Text(badgeCount.coerceAtMost(99).toString()) } }) {
+                            BadgedBox(badge = { Badge { Text(countBadgeLabel(badgeCount)) } }) {
                                 Icon(icon, contentDescription = tab.label)
                             }
                         } else {
